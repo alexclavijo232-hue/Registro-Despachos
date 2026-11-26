@@ -1,0 +1,2848 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Gestión de Despachos v4.3</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js para gráficos de indicadores -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS (xlsx-js-style) para exportar e importar Excel nativo (.xlsx) con estilos -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+  <!-- Fuente Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            slateOps: '#4B4F54',
+            slateDark: '#383B3F',
+            indYellow: '#FFD100',
+            indLime: '#97D700',
+            indOrange: '#F18448',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F4F5F7;
+      color: #1F2937;
+    }
+    table thead th {
+      font-family: 'Poppins', sans-serif !important;
+      font-size: 12px !important;
+      text-align: center !important;
+    }
+    table tbody,
+    table tbody td {
+      font-family: 'Aptos', 'Inter', sans-serif !important;
+      font-size: 12px !important;
+    }
+    /* Scrollbar limpio para tablas */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #E5E7EB;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #9CA3AF;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6B7280;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row overflow-x-hidden">
+
+  <!-- Toast / Notificación flotante (sin alert()) -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Modal de Confirmación personalizado -->
+  <div id="confirm-modal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 border border-gray-200">
+      <h3 id="confirm-title" class="text-lg font-bold text-gray-800 mb-2">Confirmar acción</h3>
+      <p id="confirm-message" class="text-sm text-gray-600 mb-6">¿Estás seguro de continuar?</p>
+      <div class="flex justify-end gap-3">
+        <button id="confirm-cancel-btn" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition">Cancelar</button>
+        <button id="confirm-ok-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-slateOps text-white hover:bg-slateDark transition">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra superior móvil -->
+  <header class="md:hidden bg-slateOps text-white px-4 py-3 flex items-center justify-between shadow-md sticky top-0 z-30">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-lg bg-indYellow text-slateDark flex items-center justify-center font-bold text-sm shadow">
+        SD
+      </div>
+      <div>
+        <h1 class="font-bold text-sm leading-tight">Gestión de Despachos</h1>
+        <p class="text-[11px] text-gray-300">Control Logístico & Almacén</p>
+      </div>
+    </div>
+    <button id="mobile-menu-btn" class="p-2 rounded-lg bg-slateDark text-white hover:bg-gray-600 focus:outline-none">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Barra lateral fija (Sidebar) -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-slateOps text-white flex flex-col justify-between transform -translate-x-full md:translate-x-0 md:static transition-transform duration-200 ease-in-out shadow-xl shrink-0">
+    <div>
+      <!-- Logo / Título -->
+      <div class="p-5 border-b border-gray-600 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indYellow text-slateDark flex items-center justify-center font-extrabold text-lg shadow-sm">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+            </svg>
+          </div>
+          <div>
+            <span class="block font-bold text-base tracking-tight text-white">DESPACHOS</span>
+            <span class="block text-xs text-indYellow font-medium">Sistema Operativo</span>
+          </div>
+        </div>
+        <button id="close-sidebar-btn" class="md:hidden text-gray-300 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Menú de 4 secciones -->
+      <nav class="p-4 space-y-1.5">
+        <button onclick="switchView('dashboard')" data-nav="dashboard" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition text-left bg-indYellow text-slateDark font-semibold shadow-sm">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          <span>Dashboard / Indicadores</span>
+        </button>
+
+        <button onclick="switchView('registro')" data-nav="registro" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium text-gray-200 hover:bg-slateDark hover:text-white transition text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          <span>Registrar Despacho</span>
+        </button>
+
+        <button onclick="switchView('consulta')" data-nav="consulta" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium text-gray-200 hover:bg-slateDark hover:text-white transition text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <span>Consulta por Destino / RQ</span>
+        </button>
+
+        <button onclick="switchView('maestros')" data-nav="maestros" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium text-gray-200 hover:bg-slateDark hover:text-white transition text-left">
+          <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582 4 8 4s8-1.79 8-4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+          </svg>
+          <span>Tablas Maestras</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Pie de barra lateral -->
+    <div class="p-4 border-t border-gray-600 text-xs text-gray-300 space-y-2">
+      <div class="flex items-center justify-between">
+        <span>Almacenamiento local</span>
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-indLime/20 text-indLime">Activo</span>
+      </div>
+      <p class="text-[11px] text-gray-400">Datos sincronizados automáticamente en el navegador.</p>
+    </div>
+  </aside>
+
+  <!-- Contenido Principal -->
+  <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+
+    <!-- =================================================================== -->
+    <!-- VISTA 1: DASHBOARD / INDICADORES                                    -->
+    <!-- =================================================================== -->
+    <section id="view-dashboard" class="view-section space-y-6">
+      <!-- Encabezado y filtro de período -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Dashboard de Indicadores</h2>
+          <p class="text-sm text-gray-500">Resumen operativo de despachos, volúmenes y atención por destino</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <label for="dashboard-period-filter" class="text-xs font-semibold uppercase tracking-wider text-gray-500">Período:</label>
+          <select id="dashboard-period-filter" onchange="renderDashboard()" class="rounded-xl border border-gray-300 bg-gray-50 px-3.5 py-2 text-sm font-medium text-gray-700 focus:border-slateOps focus:outline-none">
+            <option value="ALL">Todos los registros</option>
+          </select>
+          <button onclick="switchView('registro')" class="px-4 py-2 rounded-xl bg-indYellow text-slateDark font-semibold text-sm hover:brightness-95 transition shadow-sm flex items-center gap-1.5">
+            <span>+ Nuevo Despacho</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 Tarjetas KPI -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- KPI 1: Total Despachos -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 border-l-4 border-l-slateOps flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Total de Despachos</p>
+            <p id="kpi-total-despachos" class="text-3xl font-bold text-gray-800 mt-1">0</p>
+            <p class="text-xs text-gray-400 mt-1">Registros en período</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-gray-100 text-slateOps flex items-center justify-center">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- KPI 2: Unidades / Volumen Total -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 border-l-4 border-l-indLime flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Unidades / Volumen Total</p>
+            <p id="kpi-total-unidades" class="text-3xl font-bold text-gray-800 mt-1">0</p>
+            <p class="text-xs text-gray-400 mt-1">Suma cantidad despachada</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-indLime/20 text-green-700 flex items-center justify-center">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- KPI 3: Destinos Atendidos -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 border-l-4 border-l-indYellow flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Destinos Atendidos</p>
+            <p id="kpi-destinos-atendidos" class="text-3xl font-bold text-gray-800 mt-1">0</p>
+            <p class="text-xs text-gray-400 mt-1">Destinos únicos distintos</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-indYellow/25 text-amber-800 flex items-center justify-center">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- KPI 4: Pendientes / Con Observación -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 border-l-4 border-l-indOrange flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Pendientes / Observados</p>
+            <p id="kpi-pendientes" class="text-3xl font-bold text-gray-800 mt-1">0</p>
+            <p class="text-xs text-gray-400 mt-1">Con observación o pendiente</p>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-indOrange/20 text-orange-700 flex items-center justify-center">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 Gráficos Interactivos -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Gráfico 1: Despachos por Destino (Top 5) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-gray-800">Despachos por Destino (Top 5)</h3>
+              <p class="text-xs text-gray-500">Cantidad de registros despachados por destino</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Barras</span>
+          </div>
+          <div class="relative h-64 w-full">
+            <canvas id="chart-top-destinos"></canvas>
+          </div>
+        </div>
+
+        <!-- Gráfico 2: Tendencia de Despachos por Semana / Día -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-bold text-gray-800">Tendencia de Despachos</h3>
+              <p class="text-xs text-gray-500">Evolución de despachos y volumen por semana</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Tendencia</span>
+          </div>
+          <div class="relative h-64 w-full">
+            <canvas id="chart-tendencia"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de Consulta Rápida Integrada en el Dashboard -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="p-5 border-b border-gray-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h3 class="text-base font-bold text-gray-800">Consulta Rápida de Despachos (Por Destino o RQ)</h3>
+            <p class="text-xs text-gray-500">Filtra en tiempo real por destino o número de requerimiento (RQ)</p>
+          </div>
+          <div class="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5">
+            <select id="dash-select-destino" onchange="renderDashboardTable()" class="rounded-xl border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700 focus:border-slateOps focus:outline-none">
+              <option value="">Todos los Destinos</option>
+            </select>
+            <div class="relative">
+              <input type="text" id="dash-search-input" oninput="renderDashboardTable()" placeholder="Buscar Destino o RQ..." class="w-full sm:w-56 rounded-xl border border-gray-300 pl-9 pr-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+            <button onclick="exportFilteredCSV('dashboard')" class="px-3.5 py-2 rounded-xl bg-slateOps text-white text-sm font-medium hover:bg-slateDark transition flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <span>Exportar Excel</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                <th class="py-3 px-4 font-semibold">Fecha</th>
+                <th class="py-3 px-4 font-semibold">Área</th>
+                <th class="py-3 px-4 font-semibold">RQ</th>
+                <th class="py-3 px-4 font-semibold">Destino</th>
+                <th class="py-3 px-4 font-semibold">Código</th>
+                <th class="py-3 px-4 font-semibold">Descripción</th>
+                <th class="py-3 px-4 font-semibold text-right">Cantidad despachada</th>
+                <th class="py-3 px-4 font-semibold text-right">Cantidad en unidades</th>
+                <th class="py-3 px-4 font-semibold">Unidad de medida</th>
+                <th class="py-3 px-4 font-semibold">Nota salida/otros</th>
+              </tr>
+            </thead>
+            <tbody id="dash-table-body" class="divide-y divide-gray-100 text-sm text-gray-700">
+              <!-- Filas generadas dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+        <div id="dash-table-footer" class="px-5 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between items-center">
+          <span>Mostrando 0 registros</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VISTA 2: REGISTRAR DESPACHO (Con soporte Multi-Ítem Regla 3.1)      -->
+    <!-- =================================================================== -->
+    <section id="view-registro" class="view-section hidden space-y-6">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Registrar Nuevo Despacho</h2>
+          <p class="text-sm text-gray-500">Completa los datos generales y selecciona uno o varios materiales desde el maestro</p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indYellow/20 text-amber-900 text-xs font-semibold">
+          <span class="w-2 h-2 rounded-full bg-indYellow"></span>
+          Soporte Multi-Ítem Activo
+        </span>
+      </div>
+
+      <form id="form-registro-despacho" onsubmit="handleGuardarDespacho(event)" class="space-y-6">
+        <!-- Bloque 1: Datos de Cabecera del Despacho -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 space-y-5">
+          <div class="flex items-center gap-2 border-b border-gray-100 pb-3">
+            <span class="w-7 h-7 rounded-lg bg-slateOps text-white flex items-center justify-center text-xs font-bold">1</span>
+            <h3 class="text-base font-bold text-gray-800">Datos Generales del Despacho</h3>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Fecha (Calendario) -->
+            <div>
+              <label for="reg-fecha" class="block text-xs font-semibold text-gray-700 mb-1.5">Fecha *</label>
+              <input type="date" id="reg-fecha" required onchange="updateSemanaFromFecha()" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+
+            <!-- Semana (Calculada automáticamente) -->
+            <div>
+              <label for="reg-semana" class="block text-xs font-semibold text-gray-700 mb-1.5">Semana (Automática)</label>
+              <input type="text" id="reg-semana" readonly class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-2.5 text-sm font-semibold text-slateOps cursor-not-allowed" />
+            </div>
+
+            <!-- Área (Desplegable desde Maestro Área Solicitante) -->
+            <div>
+              <label for="reg-area" class="block text-xs font-semibold text-gray-700 mb-1.5">Área Solicitante *</label>
+              <select id="reg-area" required onchange="updateAreaInfoBadge()" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none bg-white">
+                <!-- Opciones cargadas desde maestro_areas -->
+              </select>
+              <p id="reg-area-info" class="text-[11px] text-gray-500 mt-1">Solicitante y C.C.</p>
+            </div>
+
+            <!-- RQ (Digitado manualmente) -->
+            <div>
+              <label for="reg-rq" class="block text-xs font-semibold text-gray-700 mb-1.5">RQ (Requerimiento) *</label>
+              <input type="text" id="reg-rq" required placeholder="Ej. RQ-2026-0415" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Destino (Digitado manualmente con sugerencias) -->
+            <div>
+              <label for="reg-destino" class="block text-xs font-semibold text-gray-700 mb-1.5">Destino *</label>
+              <input type="text" id="reg-destino" list="destinos-datalist" required placeholder="Ej. Batería Primavera / Pozo X-14" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none" />
+              <datalist id="destinos-datalist"></datalist>
+            </div>
+
+            <!-- Nota salida / otros -->
+            <div>
+              <label for="reg-nota" class="block text-xs font-semibold text-gray-700 mb-1.5">Nota salida / otros</label>
+              <input type="text" id="reg-nota" placeholder="Ej. NS-00984 / Guía Remisión" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+
+            <!-- Estado -->
+            <div>
+              <label for="reg-estado" class="block text-xs font-semibold text-gray-700 mb-1.5">Estado del Despacho</label>
+              <select id="reg-estado" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm bg-white focus:border-slateOps focus:outline-none">
+                <option value="Completado">Completado</option>
+                <option value="Observado">Observado / Pendiente</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Observaciones -->
+          <div>
+            <label for="reg-observaciones" class="block text-xs font-semibold text-gray-700 mb-1.5">Observaciones</label>
+            <input type="text" id="reg-observaciones" placeholder="Comentarios adicionales, entrega parcial, transporte, etc." class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none" />
+          </div>
+        </div>
+
+        <!-- Bloque 2: Selección de Material / Ítem (Jalado de maestro_materiales) -->
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-indYellow text-slateDark flex items-center justify-center text-xs font-bold">2</span>
+              <h3 class="text-base font-bold text-gray-800">Selección de Material (Desde Tabla Maestra)</h3>
+            </div>
+            <span id="reg-stock-badge" class="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-lg">
+              Selecciona un código para ver stock referencial
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+            <!-- Código (Digitación con sugerencias de similitud) -->
+            <div class="sm:col-span-4 relative">
+              <label for="reg-codigo" class="block text-xs font-semibold text-gray-700 mb-1.5">Código de Material *</label>
+              <input
+                type="text"
+                id="reg-codigo"
+                autocomplete="off"
+                placeholder="Digita código o descripción (ej. MAT-001)"
+                oninput="handleCodigoInput()"
+                onfocus="handleCodigoInput()"
+                onblur="handleCodigoBlur()"
+                onkeydown="handleCodigoKeydown(event)"
+                class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm font-mono uppercase bg-white focus:border-slateOps focus:outline-none"
+              />
+              <div
+                id="codigo-suggestions-dropdown"
+                class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-300 rounded-xl shadow-xl z-30 max-h-60 overflow-y-auto divide-y divide-gray-100"
+              ></div>
+            </div>
+
+            <!-- Descripción (Autocompletada) -->
+            <div class="sm:col-span-4">
+              <label for="reg-descripcion" class="block text-xs font-semibold text-gray-700 mb-1.5">Descripción (Autocompletada)</label>
+              <input type="text" id="reg-descripcion" readonly placeholder="Se completa al elegir código" class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-2.5 text-sm text-gray-700 cursor-not-allowed" />
+            </div>
+
+            <!-- Unidad de medida (Autocompletada) -->
+            <div class="sm:col-span-2">
+              <label for="reg-unidad" class="block text-xs font-semibold text-gray-700 mb-1.5">Unidad Medida</label>
+              <input type="text" id="reg-unidad" readonly placeholder="UND / M / KG" class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-2.5 text-sm font-semibold text-center text-gray-700 cursor-not-allowed" />
+            </div>
+
+            <!-- Cantidad despachada -->
+            <div class="sm:col-span-2">
+              <label for="reg-cantidad" class="block text-xs font-semibold text-gray-700 mb-1.5">Cantidad *</label>
+              <input type="number" id="reg-cantidad" step="any" min="0.01" placeholder="0.00" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm font-semibold focus:border-slateOps focus:outline-none" />
+            </div>
+          </div>
+
+          <!-- Campo condicional: Cantidad en unidades (cuando descripción es Tubing o Caños) -->
+          <div id="reg-unidades-extra-container" class="hidden mt-4 p-4 rounded-xl bg-amber-50/80 border border-indYellow">
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+              <div class="sm:col-span-5">
+                <label for="reg-cantidad-unidades" class="block text-xs font-bold text-slateOps mb-1">
+                  Cantidad en unidades (Tubing / Caños) *
+                </label>
+                <p class="text-[11px] text-gray-600">
+                  Campo habilitado automáticamente porque la descripción corresponde a Tubing o Caños.
+                </p>
+              </div>
+              <div class="sm:col-span-3">
+                <input
+                  type="number"
+                  id="reg-cantidad-unidades"
+                  step="1"
+                  min="1"
+                  placeholder="N° de unidades"
+                  class="w-full rounded-xl border border-amber-400 bg-white px-3.5 py-2 text-sm font-bold text-slateOps focus:border-slateOps focus:outline-none"
+                />
+              </div>
+              <div class="sm:col-span-4">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indYellow/35 text-amber-950 text-xs font-semibold">
+                  <span>Detalle de unidades registrado</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botón para agregar otro ítem (Regla 3.1) -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <button type="button" onclick="handleAgregarOtroItem()" class="px-4 py-2.5 rounded-xl border-2 border-slateOps text-slateOps font-semibold text-sm hover:bg-slateOps hover:text-white transition flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <span>+ Agregar otro ítem</span>
+            </button>
+
+            <p class="text-xs text-gray-500">
+              Si el despacho tiene varios materiales, usa <strong>"+ Agregar otro ítem"</strong> para ir verificándolos en la lista.
+            </p>
+          </div>
+
+          <!-- REGLA 3.1: Tabla de verificación que se despliega SOLO si el despacho tiene más de 1 ítem (o al iniciar modo multi-ítem) -->
+          <div id="multi-item-container" class="hidden pt-4 border-t border-gray-200 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-slateOps flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-indLime"></span>
+                Ítems agregados para este despacho (<span id="multi-item-count">0</span> ítems)
+              </h4>
+              <button type="button" onclick="clearMultiItems()" class="text-xs text-red-600 hover:underline font-medium">Limpiar lista</button>
+            </div>
+            <div class="overflow-x-auto rounded-xl border border-gray-200">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-gray-50 text-xs uppercase text-gray-600 border-b border-gray-200">
+                    <th class="py-2.5 px-4 font-semibold">#</th>
+                    <th class="py-2.5 px-4 font-semibold">Código</th>
+                    <th class="py-2.5 px-4 font-semibold">Descripción</th>
+                    <th class="py-2.5 px-4 font-semibold text-right">Cantidad</th>
+                    <th class="py-2.5 px-4 font-semibold text-right">Cantidad en unidades</th>
+                    <th class="py-2.5 px-4 font-semibold">Unidad</th>
+                    <th class="py-2.5 px-4 font-semibold text-center">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="multi-item-tbody" class="divide-y divide-gray-100 text-sm">
+                  <!-- Ítems agregados dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones de Guardado -->
+        <div class="flex flex-col sm:flex-row justify-end gap-3">
+          <button type="button" onclick="resetRegistroForm()" class="px-5 py-3 rounded-xl bg-white border border-gray-300 text-gray-700 font-medium text-sm hover:bg-gray-50 transition">
+            Limpiar Formulario
+          </button>
+          <button type="submit" class="px-6 py-3 rounded-xl bg-indLime text-slateDark font-bold text-sm hover:brightness-95 transition shadow-md flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span>Guardar Despacho</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VISTA 3: CONSULTA POR DESTINO / RQ                                  -->
+    <!-- =================================================================== -->
+    <section id="view-consulta" class="view-section hidden space-y-6">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Consulta Avanzada por Destino / RQ</h2>
+          <p class="text-sm text-gray-500">Visualiza el historial completo de despachos asociados a un destino, requerimiento o área</p>
+        </div>
+        <button onclick="exportFilteredCSV('consulta')" class="px-4 py-2.5 rounded-xl bg-slateOps text-white text-sm font-semibold hover:bg-slateDark transition flex items-center justify-center gap-2 shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          <span>Exportar Resultados Excel</span>
+        </button>
+      </div>
+
+      <!-- Panel de Filtros -->
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label for="cons-select-fecha" class="block text-xs font-semibold text-gray-600 mb-1.5">Seleccionar Fecha</label>
+          <input type="date" id="cons-select-fecha" onchange="renderConsultaView()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none" />
+        </div>
+
+        <div>
+          <label for="cons-search-destino" class="block text-xs font-semibold text-gray-600 mb-1.5">Buscar Texto en Destino</label>
+          <input type="text" id="cons-search-destino" oninput="renderConsultaView()" placeholder="Ej. Batería, Pozo..." class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+        </div>
+
+        <div>
+          <label for="cons-search-rq" class="block text-xs font-semibold text-gray-600 mb-1.5">Buscar por RQ</label>
+          <input type="text" id="cons-search-rq" oninput="renderConsultaView()" placeholder="Ej. RQ-2026..." class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+        </div>
+
+        <div>
+          <label for="cons-filter-area" class="block text-xs font-semibold text-gray-600 mb-1.5">Filtrar por Área</label>
+          <select id="cons-filter-area" onchange="renderConsultaView()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none">
+            <option value="">Todas las Áreas</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Panel de Edición Rápida (Se activa al marcar el check de un ítem en la tabla) -->
+      <div id="cons-edit-panel" class="hidden bg-white p-5 rounded-2xl shadow-sm border-2 border-indYellow space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indYellow"></span>
+            <h3 class="text-sm font-bold text-slateOps">Editando Ítem Seleccionado</h3>
+          </div>
+          <button type="button" onclick="cancelConsultaEdit()" class="text-xs font-semibold text-gray-500 hover:text-gray-800 hover:underline self-start sm:self-auto">
+            Cancelar selección
+          </button>
+        </div>
+
+        <form id="form-cons-edit" onsubmit="handleSaveConsultaEdit(event)" class="space-y-4">
+          <input type="hidden" id="cons-edit-id" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label for="cons-edit-fecha" class="block text-xs font-semibold text-gray-700 mb-1">Fecha *</label>
+              <input type="date" id="cons-edit-fecha" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+            <div>
+              <label for="cons-edit-area" class="block text-xs font-semibold text-gray-700 mb-1">Área *</label>
+              <select id="cons-edit-area" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none"></select>
+            </div>
+            <div>
+              <label for="cons-edit-rq" class="block text-xs font-semibold text-gray-700 mb-1">RQ *</label>
+              <input type="text" id="cons-edit-rq" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+            <div>
+              <label for="cons-edit-destino" class="block text-xs font-semibold text-gray-700 mb-1">Destino *</label>
+              <input type="text" id="cons-edit-destino" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label for="cons-edit-codigo" class="block text-xs font-semibold text-gray-700 mb-1">Código Material *</label>
+              <select id="cons-edit-codigo" required onchange="handleConsultaEditMaterialChange()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none"></select>
+            </div>
+            <div>
+              <label for="cons-edit-cantidad" class="block text-xs font-semibold text-gray-700 mb-1">Cantidad Despachada *</label>
+              <input type="number" id="cons-edit-cantidad" step="any" min="0.01" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-slateOps focus:outline-none" />
+            </div>
+            <div>
+              <label for="cons-edit-nota" class="block text-xs font-semibold text-gray-700 mb-1">Nota salida/otros</label>
+              <input type="text" id="cons-edit-nota" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+            <div>
+              <label for="cons-edit-obs" class="block text-xs font-semibold text-gray-700 mb-1">Observaciones</label>
+              <input type="text" id="cons-edit-obs" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+          </div>
+
+          <div id="cons-edit-unidades-container" class="hidden p-3.5 rounded-xl bg-amber-50/80 border border-indYellow">
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div class="sm:col-span-6">
+                <label for="cons-edit-cantidad-unidades" class="block text-xs font-bold text-slateOps">
+                  Cantidad en unidades (Tubing / Caños) *
+                </label>
+                <p class="text-[11px] text-gray-600">
+                  Habilitado porque la descripción del material corresponde a Tubing o Caños.
+                </p>
+              </div>
+              <div class="sm:col-span-3">
+                <input type="number" id="cons-edit-cantidad-unidades" step="1" min="1" placeholder="N° de unidades" class="w-full rounded-xl border border-amber-400 bg-white px-3 py-2 text-sm font-bold text-slateOps focus:border-slateOps focus:outline-none" />
+              </div>
+              <div class="sm:col-span-3">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-indYellow/35 text-amber-950 text-xs font-semibold">
+                  Detalle Tubing / Caños
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2.5 pt-1">
+            <button type="button" onclick="cancelConsultaEdit()" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition">
+              Cancelar
+            </button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-indYellow text-slateDark text-xs font-bold hover:brightness-95 transition shadow-sm">
+              Guardar Cambios
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Barra de Acción Masiva / Eliminación (Visible al seleccionar 1 o más ítems) -->
+      <div id="cons-bulk-bar" class="hidden bg-slateOps text-white px-5 py-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="px-2.5 py-0.5 rounded-full bg-indYellow text-slateDark text-xs font-extrabold" id="cons-selected-count">0</span>
+          <span class="text-sm font-medium">ítem(s) seleccionado(s) en la tabla</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button type="button" onclick="clearAllConsultaSelections()" class="px-3.5 py-1.5 rounded-xl bg-slateDark text-gray-200 hover:text-white text-xs font-semibold transition">
+            Deseleccionar todo
+          </button>
+          <button type="button" onclick="confirmDeleteSelectedConsultaItems()" class="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+            <span id="cons-delete-btn-label">Eliminar Seleccionados</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tarjetas Resumen del Filtro -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-gray-500 uppercase">Registros Encontrados</p>
+            <p id="cons-kpi-count" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Despachos</span>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-gray-500 uppercase">Cantidad Total Acumulada</p>
+            <p id="cons-kpi-qty" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-indLime/20 text-green-800 text-xs font-semibold">Volumen</span>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-gray-500 uppercase">RQs Distintos</p>
+            <p id="cons-kpi-rqs" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-indYellow/25 text-amber-900 text-xs font-semibold">Requerimientos</span>
+        </div>
+      </div>
+
+      <!-- Tabla Completa de Consulta -->
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                <th class="py-3 px-4 font-semibold text-center w-10">
+                  <input type="checkbox" id="cons-select-all" onchange="toggleSelectAllConsultaItems(this.checked)" title="Seleccionar todos los visibles" aria-label="Seleccionar todos los ítems visibles" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
+                </th>
+                <th class="py-3 px-4 font-semibold">Fecha</th>
+                <th class="py-3 px-4 font-semibold">Semana</th>
+                <th class="py-3 px-4 font-semibold">Área</th>
+                <th class="py-3 px-4 font-semibold">RQ</th>
+                <th class="py-3 px-4 font-semibold">Destino</th>
+                <th class="py-3 px-4 font-semibold">Código</th>
+                <th class="py-3 px-4 font-semibold">Descripción</th>
+                <th class="py-3 px-4 font-semibold text-right">Cantidad despachada</th>
+                <th class="py-3 px-4 font-semibold text-right">Cantidad en unidades</th>
+                <th class="py-3 px-4 font-semibold">Unidad de medida</th>
+                <th class="py-3 px-4 font-semibold">Nota salida/otros</th>
+                <th class="py-3 px-4 font-semibold">Observaciones</th>
+                <th class="py-3 px-4 font-semibold text-center">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="cons-table-body" class="divide-y divide-gray-100 text-sm text-gray-700">
+              <!-- Filas generadas dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VISTA 4: TABLAS MAESTRAS (Materiales y Áreas Solicitantes)          -->
+    <!-- =================================================================== -->
+    <section id="view-maestros" class="view-section hidden space-y-6">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Tablas Maestras del Sistema</h2>
+          <p class="text-sm text-gray-500">Administra el catálogo de materiales y las áreas solicitantes con sus centros de costo</p>
+        </div>
+        <button onclick="confirmResetDemoData()" class="px-4 py-2 rounded-xl border border-orange-300 bg-orange-50 text-orange-700 text-xs font-semibold hover:bg-orange-100 transition">
+          Restaurar Datos de Ejemplo
+        </button>
+      </div>
+
+      <!-- Sub-pestañas para Tablas Maestras -->
+      <div class="flex gap-2 border-b border-gray-200 pb-2">
+        <button onclick="switchMasterTab('materiales')" id="tab-btn-materiales" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slateOps text-white transition">
+          1. Maestro de Materiales
+        </button>
+        <button onclick="switchMasterTab('areas')" id="tab-btn-areas" class="px-4 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 hover:bg-gray-100 transition">
+          2. Maestro Área Solicitante
+        </button>
+      </div>
+
+      <!-- PANEL A: MAESTRO DE MATERIALES -->
+      <div id="master-panel-materiales" class="space-y-6">
+        <!-- Barra de Importación / Exportación CSV del Maestro de Materiales -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-bold text-gray-800">Importación y Exportación Masiva</h3>
+            <p class="text-xs text-gray-500">Formato requerido: <span class="font-mono font-semibold text-slateOps">codigo, descripcion, unidade medida, stock referencial</span></p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <input type="file" id="mat-import-file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" class="hidden" onchange="handleImportMaterialesCSV(event)" />
+            <button type="button" onclick="document.getElementById('mat-import-file').click()" class="px-4 py-2 rounded-xl border border-slateOps text-slateOps text-xs font-semibold hover:bg-slateOps hover:text-white transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+              </svg>
+              <span>Cargar Archivo Excel</span>
+            </button>
+            <button type="button" onclick="exportMaestroMaterialesCSV()" class="px-4 py-2 rounded-xl bg-slateOps text-white text-xs font-semibold hover:bg-slateDark transition flex items-center gap-1.5 shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <span>Exportar Excel</span>
+            </button>
+          </div>
+        </div>
+
+        <form id="form-maestro-material" onsubmit="handleSaveMaterial(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 id="mat-form-title" class="text-base font-bold text-gray-800">Agregar / Editar Material</h3>
+            <button type="button" id="mat-cancel-edit" onclick="cancelEditMaterial()" class="hidden text-xs text-gray-500 hover:underline">Cancelar edición</button>
+          </div>
+          <input type="hidden" id="mat-edit-index" value="-1" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Código *</label>
+              <input type="text" id="mat-codigo" required placeholder="Ej. MAT-010" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm uppercase focus:border-slateOps focus:outline-none" />
+            </div>
+
+            <div class="lg:col-span-2">
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Descripción *</label>
+              <input type="text" id="mat-descripcion" required placeholder="Nombre / especificación del material" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Unidad Medida *</label>
+              <select id="mat-unidad" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none">
+                <option value="UND">UND (Unidad)</option>
+                <option value="M">M (Metros)</option>
+                <option value="KG">KG (Kilogramos)</option>
+                <option value="CJ">CJ (Caja)</option>
+                <option value="GLN">GLN (Galones)</option>
+                <option value="JGO">JGO (Juego)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-700 mb-1">Stock Referencial</label>
+              <input type="number" id="mat-stock" step="any" min="0" value="0" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="mat-activo" checked class="w-4 h-4 rounded text-slateOps focus:ring-0" />
+              <span class="text-sm font-medium text-gray-700">Material Activo (disponible para despachos)</span>
+            </label>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-indYellow text-slateDark font-bold text-sm hover:brightness-95 transition shadow-sm">
+              Guardar Material
+            </button>
+          </div>
+        </form>
+
+        <!-- Tabla de Materiales -->
+        <div id="mat-bulk-bar" class="hidden bg-slateOps text-white px-5 py-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-0.5 rounded-full bg-indYellow text-slateDark text-xs font-extrabold" id="mat-selected-count">0</span>
+            <span class="text-sm font-medium">material(es) seleccionado(s)</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="button" onclick="clearAllMaterialSelections()" class="px-3.5 py-1.5 rounded-xl bg-slateDark text-gray-200 hover:text-white text-xs font-semibold transition">
+              Deseleccionar todo
+            </button>
+            <button type="button" onclick="confirmDeleteSelectedMaterials()" class="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              <span id="mat-delete-btn-label">Eliminar Seleccionados</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                  <th class="py-3 px-4 font-semibold text-center w-10">
+                    <input type="checkbox" id="mat-select-all" onchange="toggleSelectAllMaterials(this.checked)" title="Seleccionar todos los materiales" aria-label="Seleccionar todos los materiales" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
+                  </th>
+                  <th class="py-3 px-4 font-semibold">Código</th>
+                  <th class="py-3 px-4 font-semibold">Descripción</th>
+                  <th class="py-3 px-4 font-semibold">Unidad Medida</th>
+                  <th class="py-3 px-4 font-semibold text-right">Stock Referencial</th>
+                  <th class="py-3 px-4 font-semibold text-center">Activo</th>
+                  <th class="py-3 px-4 font-semibold text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="maestro-mat-tbody" class="divide-y divide-gray-100 text-sm text-gray-700">
+                <!-- Filas dinámicas -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL B: MAESTRO ÁREA SOLICITANTE -->
+      <div id="master-panel-areas" class="hidden space-y-6">
+        <form id="form-maestro-area" onsubmit="handleSaveArea(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 id="area-form-title" class="text-base font-bold text-gray-800">Agregar / Editar Área Solicitante</h3>
+            <button type="button" id="area-cancel-edit" onclick="cancelEditArea()" class="hidden text-xs text-gray-500 hover:underline">Cancelar edición</button>
+          </div>
+          <input type="hidden" id="area-edit-index" value="-1" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div>
+              <label for="area-id" class="block text-xs font-semibold text-gray-700 mb-1">ID/AREA *</label>
+              <input type="text" id="area-id" list="areas-id-suggestions" required placeholder="Ej. Facilidades / Completación" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              <datalist id="areas-id-suggestions">
+                <option value="Facilidades">
+                <option value="Completación">
+                <option value="Producción">
+                <option value="Mantenimiento">
+              </datalist>
+            </div>
+
+            <div>
+              <label for="area-nombre" class="block text-xs font-semibold text-gray-700 mb-1">NOMBRE *</label>
+              <input type="text" id="area-nombre" required placeholder="Nombre del solicitante" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+
+            <div>
+              <label for="area-apellidos" class="block text-xs font-semibold text-gray-700 mb-1">APELLIDOS *</label>
+              <input type="text" id="area-apellidos" required placeholder="Apellidos del solicitante" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+
+            <div>
+              <label for="area-cc" class="block text-xs font-semibold text-gray-700 mb-1">C.C (Centro de Costo) *</label>
+              <input type="text" id="area-cc" required placeholder="Ej. CC-1040" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm uppercase focus:border-slateOps focus:outline-none" />
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" id="area-activo" checked class="w-4 h-4 rounded text-slateOps focus:ring-0" />
+              <span class="text-sm font-medium text-gray-700">Registro Activo (disponible en Registro de Despachos)</span>
+            </label>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-indYellow text-slateDark font-bold text-sm hover:brightness-95 transition shadow-sm">
+              Guardar Registro
+            </button>
+          </div>
+        </form>
+
+        <!-- Tabla de Áreas -->
+        <div id="area-bulk-bar" class="hidden bg-slateOps text-white px-5 py-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-0.5 rounded-full bg-indYellow text-slateDark text-xs font-extrabold" id="area-selected-count">0</span>
+            <span class="text-sm font-medium">registro(s) de área seleccionado(s)</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="button" onclick="clearAllAreaSelections()" class="px-3.5 py-1.5 rounded-xl bg-slateDark text-gray-200 hover:text-white text-xs font-semibold transition">
+              Deseleccionar todo
+            </button>
+            <button type="button" onclick="confirmDeleteSelectedAreas()" class="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              <span id="area-delete-btn-label">Eliminar Seleccionados</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                  <th class="py-3 px-4 font-semibold text-center w-10">
+                    <input type="checkbox" id="area-select-all" onchange="toggleSelectAllAreas(this.checked)" title="Seleccionar todas las áreas" aria-label="Seleccionar todas las áreas" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
+                  </th>
+                  <th class="py-3 px-4 font-semibold">ID/AREA</th>
+                  <th class="py-3 px-4 font-semibold">NOMBRE</th>
+                  <th class="py-3 px-4 font-semibold">APELLIDOS</th>
+                  <th class="py-3 px-4 font-semibold">C.C</th>
+                  <th class="py-3 px-4 font-semibold text-center">Estado</th>
+                  <th class="py-3 px-4 font-semibold text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="maestro-area-tbody" class="divide-y divide-gray-100 text-sm text-gray-700">
+                <!-- Filas dinámicas -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. DATOS INICIALES Y ALMACENAMIENTO PERSISTENTE (localStorage)
+    // =========================================================================
+    const STORAGE_KEYS = {
+      MATERIALES: 'sgd_maestro_materiales_v1',
+      AREAS: 'sgd_maestro_areas_v2',
+      AREAS_LEGACY: 'sgd_maestro_areas_v1',
+      DESPACHOS: 'sgd_despachos_v1'
+    };
+
+    const DEFAULT_MATERIALES = [
+      { codigo: 'MAT-001', descripcion: 'Caño de 2" Sch 40 sin costura', unidad: 'M', stock: 240, activo: true },
+      { codigo: 'MAT-002', descripcion: 'Varilla de bombeo 3/4" Grado D', unidad: 'UND', stock: 85, activo: true },
+      { codigo: 'MAT-003', descripcion: 'Cople 2" API 5CT J55', unidad: 'UND', stock: 150, activo: true },
+      { codigo: 'MAT-004', descripcion: 'Protector de bisel roscado 2-7/8"', unidad: 'UND', stock: 320, activo: true },
+      { codigo: 'MAT-005', descripcion: 'Válvula de compuerta 2" 1500 PSI', unidad: 'UND', stock: 18, activo: true },
+      { codigo: 'MAT-006', descripcion: 'Empaquetadura espirometálica 2" RF', unidad: 'UND', stock: 95, activo: true },
+      { codigo: 'MAT-007', descripcion: 'Grasa sellante para roscas API', unidad: 'KG', stock: 60, activo: true },
+      { codigo: 'MAT-008', descripcion: 'Cinta anticorrosiva Polyken 4"', unidad: 'CJ', stock: 25, activo: true },
+      { codigo: 'MAT-009', descripcion: 'Espárrago B7 5/8" x 3-1/2" c/tuercas', unidad: 'JGO', stock: 110, activo: false }
+    ];
+
+    const DEFAULT_AREAS = [
+      { uid: 'area-1', id: 'Facilidades', nombre: 'Carlos', apellidos: 'Mendoza Paredes', cc: 'CC-1040', activo: true },
+      { uid: 'area-2', id: 'Facilidades', nombre: 'Jorge', apellidos: 'Salazar Ríos', cc: 'CC-1042', activo: true },
+      { uid: 'area-3', id: 'Completación', nombre: 'Valeria', apellidos: 'Rojas Huamán', cc: 'CC-2085', activo: true },
+      { uid: 'area-4', id: 'Completación', nombre: 'Luis', apellidos: 'Fernández Torres', cc: 'CC-2090', activo: true }
+    ];
+
+    const DEFAULT_DESPACHOS = [
+      {
+        id: 1,
+        fecha: '2026-11-03',
+        semana: 'Sem 45',
+        area: 'Facilidades',
+        rq: 'RQ-2026-0381',
+        destino: 'Batería Primavera',
+        codigo: 'MAT-001',
+        descripcion: 'Caño de 2" Sch 40 sin costura',
+        cantidad: 36,
+        cantidadUnidades: 6,
+        unidad: 'M',
+        notaSalida: 'NS-00912',
+        observaciones: 'Entrega completa en plataforma',
+        estado: 'Completado'
+      },
+      {
+        id: 2,
+        fecha: '2026-11-05',
+        semana: 'Sem 45',
+        area: 'Completación',
+        rq: 'RQ-2026-0388',
+        destino: 'Pozo X-14',
+        codigo: 'MAT-002',
+        descripcion: 'Varilla de bombeo 3/4" Grado D',
+        cantidad: 20,
+        unidad: 'UND',
+        notaSalida: 'NS-00918',
+        observaciones: '',
+        estado: 'Completado'
+      },
+      {
+        id: 3,
+        fecha: '2026-11-10',
+        semana: 'Sem 46',
+        area: 'Facilidades',
+        rq: 'RQ-2026-0394',
+        destino: 'Estación Compresora Norte',
+        codigo: 'MAT-005',
+        descripcion: 'Válvula de compuerta 2" 1500 PSI',
+        cantidad: 4,
+        unidad: 'UND',
+        notaSalida: 'NS-00925',
+        observaciones: 'Falta certificado de prueba hidrostática',
+        estado: 'Observado'
+      },
+      {
+        id: 4,
+        fecha: '2026-11-12',
+        semana: 'Sem 46',
+        area: 'Completación',
+        rq: 'RQ-2026-0401',
+        destino: 'Pozo X-14',
+        codigo: 'MAT-003',
+        descripcion: 'Cople 2" API 5CT J55',
+        cantidad: 30,
+        unidad: 'UND',
+        notaSalida: 'NS-00931',
+        observaciones: '',
+        estado: 'Completado'
+      },
+      {
+        id: 5,
+        fecha: '2026-11-17',
+        semana: 'Sem 47',
+        area: 'Facilidades',
+        rq: 'RQ-2026-0409',
+        destino: 'Batería Primavera',
+        codigo: 'MAT-008',
+        descripcion: 'Cinta anticorrosiva Polyken 4"',
+        cantidad: 6,
+        unidad: 'CJ',
+        notaSalida: 'NS-00940',
+        observaciones: '',
+        estado: 'Completado'
+      },
+      {
+        id: 6,
+        fecha: '2026-11-19',
+        semana: 'Sem 47',
+        area: 'Completación',
+        rq: 'RQ-2026-0412',
+        destino: 'Pozo Sur-08',
+        codigo: 'MAT-007',
+        descripcion: 'Grasa sellante para roscas API',
+        cantidad: 15,
+        unidad: 'KG',
+        notaSalida: 'NS-00944',
+        observaciones: 'Pendiente firma de conformidad en campo',
+        estado: 'Observado'
+      }
+    ];
+
+    // Estado en memoria
+    let maestroMateriales = [];
+    let maestroAreas = [];
+    let despachos = [];
+    let multiItemsBuffer = []; // Buffer para Regla 3.1 (despachos multi-ítem)
+    let selectedConsultaIds = new Set(); // IDs seleccionados con check en Consulta
+    let selectedMaterialCodes = new Set(); // Códigos seleccionados en Maestro de Materiales
+    let selectedAreaUids = new Set(); // UIDs seleccionados en Maestro Área Solicitante
+    let chartTopDestinos = null;
+    let chartTendencia = null;
+
+    // =========================================================================
+    // 2. PERSISTENCIA (localStorage) Y UTILIDADES GENERALES
+    // =========================================================================
+    function loadDataFromStorage() {
+      try {
+        const storedMat = localStorage.getItem(STORAGE_KEYS.MATERIALES);
+        maestroMateriales = storedMat ? JSON.parse(storedMat) : JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
+
+        const storedAreas = localStorage.getItem(STORAGE_KEYS.AREAS);
+        if (storedAreas) {
+          maestroAreas = JSON.parse(storedAreas);
+        } else {
+          maestroAreas = JSON.parse(JSON.stringify(DEFAULT_AREAS));
+        }
+        maestroAreas.forEach((a, idx) => {
+          if (!a.uid) a.uid = `area-${idx + 1}`;
+        });
+
+        const storedDesp = localStorage.getItem(STORAGE_KEYS.DESPACHOS);
+        despachos = storedDesp ? JSON.parse(storedDesp) : JSON.parse(JSON.stringify(DEFAULT_DESPACHOS));
+      } catch (err) {
+        console.error('Error cargando localStorage:', err);
+        maestroMateriales = JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
+        maestroAreas = JSON.parse(JSON.stringify(DEFAULT_AREAS));
+        despachos = JSON.parse(JSON.stringify(DEFAULT_DESPACHOS));
+      }
+      saveAllToStorage();
+    }
+
+    function saveAllToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.MATERIALES, JSON.stringify(maestroMateriales));
+        localStorage.setItem(STORAGE_KEYS.AREAS, JSON.stringify(maestroAreas));
+        localStorage.setItem(STORAGE_KEYS.DESPACHOS, JSON.stringify(despachos));
+      } catch (err) {
+        console.error('Error guardando en localStorage:', err);
+      }
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const colors = {
+        success: 'bg-slateOps text-white border-l-4 border-l-indLime',
+        warning: 'bg-amber-800 text-white border-l-4 border-l-indYellow',
+        error: 'bg-red-700 text-white border-l-4 border-l-red-300'
+      };
+
+      const toast = document.createElement('div');
+      toast.className = `${colors[type] || colors.success} px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto transition-all duration-300 max-w-sm`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    function showConfirmModal(title, message, onConfirm) {
+      const modal = document.getElementById('confirm-modal');
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+
+      const okBtn = document.getElementById('confirm-ok-btn');
+      const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+      const close = () => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      };
+
+      okBtn.onclick = () => {
+        close();
+        if (typeof onConfirm === 'function') onConfirm();
+      };
+      cancelBtn.onclick = close;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function getISOWeekString(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-').map(Number);
+      if (parts.length !== 3) return '';
+      const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+      const dayNum = date.getUTCDay() || 7;
+      date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+      return `Sem ${String(weekNo).padStart(2, '0')}`;
+    }
+
+    function getTodayISO() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    // =========================================================================
+    // 3. NAVEGACIÓN ENTRE VISTAS Y MENÚ MÓVIL
+    // =========================================================================
+    function switchView(viewName) {
+      document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
+      const target = document.getElementById(`view-${viewName}`);
+      if (target) target.classList.remove('hidden');
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const isCurrent = btn.getAttribute('data-nav') === viewName;
+        if (isCurrent) {
+          btn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm transition text-left bg-indYellow text-slateDark font-semibold shadow-sm';
+        } else {
+          btn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium text-gray-200 hover:bg-slateDark hover:text-white transition text-left';
+        }
+      });
+
+      // Cerrar menú móvil si está abierto
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && window.innerWidth < 768) {
+        sidebar.classList.add('-translate-x-full');
+      }
+
+      // Inicializar datos de la vista activa
+      if (viewName === 'dashboard') {
+        initDashboardFilters();
+        renderDashboard();
+      } else if (viewName === 'registro') {
+        initRegistroForm();
+      } else if (viewName === 'consulta') {
+        initConsultaFilters();
+        renderConsultaView();
+      } else if (viewName === 'maestros') {
+        renderMaestrosTables();
+      }
+    }
+
+    // =========================================================================
+    // 4. DASHBOARD / INDICADORES Y GRÁFICOS
+    // =========================================================================
+    function initDashboardFilters() {
+      const periodSelect = document.getElementById('dashboard-period-filter');
+      const currentPeriod = periodSelect.value;
+      const months = [...new Set(despachos.map(d => d.fecha.slice(0, 7)))].sort().reverse();
+
+      periodSelect.innerHTML = '<option value="ALL">Todos los registros</option>' +
+        months.map(m => `<option value="${m}">Mes ${m}</option>`).join('');
+
+      if ([...periodSelect.options].some(o => o.value === currentPeriod)) {
+        periodSelect.value = currentPeriod;
+      }
+
+      const destSelect = document.getElementById('dash-select-destino');
+      const currentDest = destSelect.value;
+      const destinos = [...new Set(despachos.map(d => d.destino.trim()).filter(Boolean))].sort();
+      destSelect.innerHTML = '<option value="">Todos los Destinos</option>' +
+        destinos.map(dest => `<option value="${dest}">${dest}</option>`).join('');
+
+      if ([...destSelect.options].some(o => o.value === currentDest)) {
+        destSelect.value = currentDest;
+      }
+    }
+
+    function calcularCantidadAcumulada(registros) {
+      return registros.reduce((acc, d) => {
+        const esTubingOCano = isTubingOrCanosDescription(d.descripcion);
+        const aporte = esTubingOCano
+          ? (Number(d.cantidadUnidades) || 0)
+          : (Number(d.cantidad) || 0);
+        return acc + aporte;
+      }, 0);
+    }
+
+    function getDashboardPeriodData() {
+      const period = document.getElementById('dashboard-period-filter')?.value || 'ALL';
+      if (period === 'ALL') return despachos;
+      return despachos.filter(d => d.fecha.startsWith(period));
+    }
+
+    function renderDashboard() {
+      const periodData = getDashboardPeriodData();
+
+      // KPIs
+      const totalDespachos = periodData.length;
+      const totalUnidades = calcularCantidadAcumulada(periodData);
+      const destinosUnicos = new Set(periodData.map(d => d.destino.trim().toLowerCase()).filter(Boolean)).size;
+      const pendientesObs = periodData.filter(d =>
+        d.estado === 'Observado' || (d.observaciones && d.observaciones.trim().length > 0)
+      ).length;
+
+      document.getElementById('kpi-total-despachos').textContent = totalDespachos.toLocaleString('es-PE');
+      document.getElementById('kpi-total-unidades').textContent = Number.isInteger(totalUnidades)
+        ? totalUnidades.toLocaleString('es-PE')
+        : totalUnidades.toLocaleString('es-PE', { maximumFractionDigits: 2 });
+      document.getElementById('kpi-destinos-atendidos').textContent = destinosUnicos.toLocaleString('es-PE');
+      document.getElementById('kpi-pendientes').textContent = pendientesObs.toLocaleString('es-PE');
+
+      renderDashboardCharts(periodData);
+      renderDashboardTable();
+    }
+
+    function renderDashboardCharts(periodData) {
+      // Top 5 Destinos
+      const destMap = {};
+      periodData.forEach(d => {
+        const key = d.destino.trim() || 'Sin destino';
+        destMap[key] = (destMap[key] || 0) + 1;
+      });
+      const top5 = Object.entries(destMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+      const ctxDest = document.getElementById('chart-top-destinos')?.getContext('2d');
+      if (ctxDest) {
+        if (chartTopDestinos) chartTopDestinos.destroy();
+        chartTopDestinos = new Chart(ctxDest, {
+          type: 'bar',
+          data: {
+            labels: top5.map(item => item[0]),
+            datasets: [{
+              label: 'Despachos realizados',
+              data: top5.map(item => item[1]),
+              backgroundColor: ['#4B4F54', '#FFD100', '#97D700', '#F18448', '#6B7280'],
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0 } }
+            }
+          }
+        });
+      }
+
+      // Tendencia por semana
+      const weekMap = {};
+      periodData.forEach(d => {
+        const key = d.semana || getISOWeekString(d.fecha) || d.fecha;
+        if (!weekMap[key]) weekMap[key] = { count: 0, qty: 0 };
+        weekMap[key].count += 1;
+        weekMap[key].qty += Number(d.cantidad) || 0;
+      });
+      const sortedWeeks = Object.keys(weekMap).sort();
+
+      const ctxTend = document.getElementById('chart-tendencia')?.getContext('2d');
+      if (ctxTend) {
+        if (chartTendencia) chartTendencia.destroy();
+        chartTendencia = new Chart(ctxTend, {
+          type: 'line',
+          data: {
+            labels: sortedWeeks,
+            datasets: [
+              {
+                label: 'N° Despachos',
+                data: sortedWeeks.map(w => weekMap[w].count),
+                borderColor: '#4B4F54',
+                backgroundColor: 'rgba(75, 79, 84, 0.12)',
+                tension: 0.3,
+                fill: true,
+                yAxisID: 'y'
+              },
+              {
+                label: 'Volumen despachado',
+                data: sortedWeeks.map(w => weekMap[w].qty),
+                borderColor: '#97D700',
+                backgroundColor: 'rgba(151, 215, 0, 0.15)',
+                tension: 0.3,
+                yAxisID: 'y1'
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { type: 'linear', position: 'left', beginAtZero: true, ticks: { precision: 0 } },
+              y1: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false } }
+            }
+          }
+        });
+      }
+    }
+
+    function getDashboardTableFilteredData() {
+      const periodData = getDashboardPeriodData();
+      const destFilter = (document.getElementById('dash-select-destino')?.value || '').toLowerCase();
+      const searchText = (document.getElementById('dash-search-input')?.value || '').trim().toLowerCase();
+
+      return periodData
+        .filter(d => {
+          const matchDest = !destFilter || d.destino.toLowerCase() === destFilter;
+          const matchQuery = !searchText ||
+            d.destino.toLowerCase().includes(searchText) ||
+            d.rq.toLowerCase().includes(searchText);
+          return matchDest && matchQuery;
+        })
+        .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id);
+    }
+
+    function renderDashboardTable() {
+      const rows = getDashboardTableFilteredData();
+      const tbody = document.getElementById('dash-table-body');
+      const footer = document.getElementById('dash-table-footer');
+
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-gray-400 text-sm">No se encontraron despachos con los filtros seleccionados.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(d => `
+          <tr class="hover:bg-gray-50 transition">
+            <td class="py-3 px-4 whitespace-nowrap font-medium text-gray-800">${d.fecha}</td>
+            <td class="py-3 px-4 whitespace-nowrap">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${d.area === 'Facilidades' ? 'bg-slateOps/10 text-slateOps' : 'bg-indYellow/25 text-amber-900'}">
+                ${d.area}
+              </span>
+            </td>
+            <td class="py-3 px-4 whitespace-nowrap font-semibold text-gray-700">${d.rq}</td>
+            <td class="py-3 px-4 font-medium text-gray-800">${d.destino}</td>
+            <td class="py-3 px-4 whitespace-nowrap font-mono text-xs font-bold text-slateOps">${d.codigo}</td>
+            <td class="py-3 px-4 text-gray-600">${d.descripcion}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-right font-bold text-gray-800">${d.cantidad}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-right font-semibold text-slateOps">${d.cantidadUnidades != null ? d.cantidadUnidades : '-'}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-xs font-semibold text-gray-500">${d.unidad}</td>
+            <td class="py-3 px-4 text-gray-600">${d.notaSalida || '-'}</td>
+          </tr>
+        `).join('');
+      }
+
+      if (footer) {
+        footer.innerHTML = `<span>Mostrando <strong>${rows.length}</strong> registro(s)</span><span>Actualizado en tiempo real</span>`;
+      }
+    }
+
+    // =========================================================================
+    // 5. REGISTRO DE DESPACHO (Similitud de Código + Campo Tubing/Caños + Multi-Ítem)
+    // =========================================================================
+    let activeCodigoSuggestions = [];
+    let activeSuggestionIndex = -1;
+
+    function normalizeSearchText(str) {
+      return String(str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+    }
+
+    function isTubingOrCanosDescription(descripcion) {
+      const norm = normalizeSearchText(descripcion);
+      // Coincide con "tubing" o "caño" / "caños" como palabra o término completo/variante
+      return /\btubing\b/.test(norm) || /\bcano[s]?\b/.test(norm);
+    }
+
+    function syncTubingOrCanosField(descripcion) {
+      const container = document.getElementById('reg-unidades-extra-container');
+      const inputUnidades = document.getElementById('reg-cantidad-unidades');
+      if (!container || !inputUnidades) return;
+
+      if (isTubingOrCanosDescription(descripcion)) {
+        container.classList.remove('hidden');
+        inputUnidades.required = true;
+      } else {
+        container.classList.add('hidden');
+        inputUnidades.required = false;
+        inputUnidades.value = '';
+      }
+    }
+
+    function computeSimilarityScore(mat, rawQuery) {
+      const q = normalizeSearchText(rawQuery);
+      if (!q) return 10;
+
+      const codeNorm = normalizeSearchText(mat.codigo);
+      const descNorm = normalizeSearchText(mat.descripcion);
+
+      if (codeNorm === q) return 1000;
+      if (codeNorm.startsWith(q)) return 800;
+      if (codeNorm.includes(q)) return 600;
+      if (descNorm.startsWith(q)) return 450;
+      if (descNorm.includes(q)) return 300;
+
+      // Coincidencia de subsecuencia ordenada o caracteres compartidos para similitud parcial
+      let qIdx = 0;
+      for (let i = 0; i < codeNorm.length && qIdx < q.length; i++) {
+        if (codeNorm[i] === q[qIdx]) qIdx++;
+      }
+      if (qIdx === q.length && q.length >= 2) {
+        return 150 + qIdx * 10;
+      }
+
+      const tokens = q.split(/\s+/).filter(Boolean);
+      const tokenMatches = tokens.filter(t => codeNorm.includes(t) || descNorm.includes(t)).length;
+      if (tokenMatches > 0) {
+        return tokenMatches * 80;
+      }
+
+      return 0;
+    }
+
+    function getSimilarMaterials(query) {
+      const trimmed = String(query || '').trim();
+      const activeMats = maestroMateriales.filter(m => m.activo);
+
+      // Si no se ha digitado nada aún, no mostrar sugerencias hasta que se digite o enfoque con texto
+      if (!trimmed) return [];
+
+      return activeMats
+        .map(mat => ({ mat, score: computeSimilarityScore(mat, trimmed) }))
+        .filter(entry => entry.score > 0)
+        .sort((a, b) => b.score - a.score || a.mat.codigo.localeCompare(b.mat.codigo))
+        .slice(0, 8)
+        .map(entry => entry.mat);
+    }
+
+    function renderCodigoSuggestionsDropdown() {
+      const dropdown = document.getElementById('codigo-suggestions-dropdown');
+      const input = document.getElementById('reg-codigo');
+      if (!dropdown || !input) return;
+
+      const q = input.value.trim();
+      if (!q) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        activeCodigoSuggestions = [];
+        activeSuggestionIndex = -1;
+        return;
+      }
+
+      activeCodigoSuggestions = getSimilarMaterials(q);
+      activeSuggestionIndex = activeCodigoSuggestions.length > 0 ? 0 : -1;
+
+      if (activeCodigoSuggestions.length === 0) {
+        dropdown.innerHTML = `
+          <div class="px-3.5 py-2.5 text-xs text-gray-500">
+            Sin códigos similares para "<span class="font-semibold text-gray-700">${q}</span>"
+          </div>
+        `;
+        dropdown.classList.remove('hidden');
+        return;
+      }
+
+      dropdown.innerHTML = activeCodigoSuggestions.map((mat, idx) => {
+        const isHighlighted = idx === activeSuggestionIndex;
+        const badgeTubing = isTubingOrCanosDescription(mat.descripcion)
+          ? '<span class="ml-1.5 px-1.5 py-0.5 rounded bg-indYellow/40 text-amber-950 text-[10px] font-bold">Tubing/Caños</span>'
+          : '';
+        return `
+          <button
+            type="button"
+            onmousedown="selectSuggestedMaterial('${mat.codigo.replace(/'/g, "\\'")}')"
+            class="w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between gap-2 transition ${isHighlighted ? 'bg-indYellow/20' : 'hover:bg-gray-50'}"
+          >
+            <div class="min-w-0">
+              <div class="font-mono font-bold text-slateOps">${mat.codigo}${badgeTubing}</div>
+              <div class="text-gray-700 truncate">${mat.descripcion}</div>
+            </div>
+            <span class="shrink-0 font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">${mat.unidad}</span>
+          </button>
+        `;
+      }).join('');
+
+      dropdown.classList.remove('hidden');
+    }
+
+    function selectSuggestedMaterial(codigo) {
+      const input = document.getElementById('reg-codigo');
+      const dropdown = document.getElementById('codigo-suggestions-dropdown');
+      if (input) input.value = codigo;
+      if (dropdown) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+      }
+      activeCodigoSuggestions = [];
+      activeSuggestionIndex = -1;
+      handleMaterialSelect();
+    }
+
+    function handleCodigoInput() {
+      const input = document.getElementById('reg-codigo');
+      const typedCode = (input?.value || '').trim().toUpperCase();
+      const exactMat = maestroMateriales.find(m => m.activo && m.codigo.toUpperCase() === typedCode);
+
+      if (exactMat) {
+        document.getElementById('reg-descripcion').value = exactMat.descripcion;
+        document.getElementById('reg-unidad').value = exactMat.unidad;
+        const stockBadge = document.getElementById('reg-stock-badge');
+        if (stockBadge) {
+          stockBadge.textContent = `Stock referencial: ${exactMat.stock} ${exactMat.unidad}`;
+          stockBadge.className = 'text-xs font-semibold text-slateOps bg-indYellow/30 px-3 py-1 rounded-lg';
+        }
+        syncTubingOrCanosField(exactMat.descripcion);
+      } else {
+        document.getElementById('reg-descripcion').value = '';
+        document.getElementById('reg-unidad').value = '';
+        const stockBadge = document.getElementById('reg-stock-badge');
+        if (stockBadge) {
+          stockBadge.textContent = 'Digita o selecciona un código similar para autocompletar';
+          stockBadge.className = 'text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-lg';
+        }
+        syncTubingOrCanosField('');
+      }
+
+      renderCodigoSuggestionsDropdown();
+    }
+
+    function handleCodigoBlur() {
+      setTimeout(() => {
+        const dropdown = document.getElementById('codigo-suggestions-dropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+      }, 150);
+    }
+
+    function handleCodigoKeydown(e) {
+      const dropdown = document.getElementById('codigo-suggestions-dropdown');
+      if (!dropdown || dropdown.classList.contains('hidden') || activeCodigoSuggestions.length === 0) {
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activeSuggestionIndex = (activeSuggestionIndex + 1) % activeCodigoSuggestions.length;
+        renderCodigoSuggestionsDropdown();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activeSuggestionIndex = (activeSuggestionIndex - 1 + activeCodigoSuggestions.length) % activeCodigoSuggestions.length;
+        renderCodigoSuggestionsDropdown();
+      } else if (e.key === 'Enter' && activeSuggestionIndex >= 0) {
+        e.preventDefault();
+        const chosen = activeCodigoSuggestions[activeSuggestionIndex];
+        if (chosen) selectSuggestedMaterial(chosen.codigo);
+      } else if (e.key === 'Escape') {
+        dropdown.classList.add('hidden');
+      }
+    }
+
+    function initRegistroForm() {
+      const fechaInput = document.getElementById('reg-fecha');
+      if (!fechaInput.value) {
+        fechaInput.value = getTodayISO();
+      }
+      updateSemanaFromFecha();
+
+      // Cargar Áreas activas
+      const areaSelect = document.getElementById('reg-area');
+      const activeAreas = maestroAreas.filter(a => a.activo !== false);
+      areaSelect.innerHTML = activeAreas.map(a =>
+        `<option value="${a.id}" data-solicitante="${a.nombre} ${a.apellidos}" data-cc="${a.cc}">${a.id} - ${a.nombre} ${a.apellidos} (${a.cc})</option>`
+      ).join('');
+      updateAreaInfoBadge();
+
+      // Cargar sugerencias de destinos previos
+      const destinosList = document.getElementById('destinos-datalist');
+      const uniqueDestinos = [...new Set(despachos.map(d => d.destino.trim()).filter(Boolean))];
+      destinosList.innerHTML = uniqueDestinos.map(dest => `<option value="${dest}">`).join('');
+
+      syncTubingOrCanosField(document.getElementById('reg-descripcion')?.value || '');
+    }
+
+    function updateSemanaFromFecha() {
+      const fechaVal = document.getElementById('reg-fecha').value;
+      document.getElementById('reg-semana').value = getISOWeekString(fechaVal);
+    }
+
+    function updateAreaInfoBadge() {
+      const sel = document.getElementById('reg-area');
+      const opt = sel.options[sel.selectedIndex];
+      const badge = document.getElementById('reg-area-info');
+      if (opt && badge) {
+        const sol = opt.getAttribute('data-solicitante') || '';
+        const cc = opt.getAttribute('data-cc') || '';
+        badge.textContent = sol ? `Solicitante: ${sol} | C.C: ${cc}` : 'Solicitante y C.C.';
+      }
+    }
+
+    function handleMaterialSelect() {
+      const codigo = document.getElementById('reg-codigo').value.trim().toUpperCase();
+      const mat = maestroMateriales.find(m => m.codigo.toUpperCase() === codigo);
+      const descInput = document.getElementById('reg-descripcion');
+      const unitInput = document.getElementById('reg-unidad');
+      const stockBadge = document.getElementById('reg-stock-badge');
+
+      if (mat) {
+        document.getElementById('reg-codigo').value = mat.codigo;
+        descInput.value = mat.descripcion;
+        unitInput.value = mat.unidad;
+        stockBadge.textContent = `Stock referencial: ${mat.stock} ${mat.unidad}`;
+        stockBadge.className = 'text-xs font-semibold text-slateOps bg-indYellow/30 px-3 py-1 rounded-lg';
+        syncTubingOrCanosField(mat.descripcion);
+      } else {
+        descInput.value = '';
+        unitInput.value = '';
+        stockBadge.textContent = 'Digita un código para ver sugerencias similares';
+        stockBadge.className = 'text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-lg';
+        syncTubingOrCanosField('');
+      }
+    }
+
+    function handleAgregarOtroItem() {
+      const codigo = document.getElementById('reg-codigo').value.trim().toUpperCase();
+      const cantidad = parseFloat(document.getElementById('reg-cantidad').value);
+
+      if (!codigo) {
+        showToast('Digita o selecciona un código de material antes de agregar.', 'warning');
+        return;
+      }
+      if (isNaN(cantidad) || cantidad <= 0) {
+        showToast('Ingresa una cantidad válida mayor a 0.', 'warning');
+        return;
+      }
+
+      const mat = maestroMateriales.find(m => m.codigo.toUpperCase() === codigo);
+      if (!mat) {
+        showToast(`El código "${codigo}" no existe en el Maestro de Materiales.`, 'warning');
+        return;
+      }
+
+      let cantidadUnidades = null;
+      if (isTubingOrCanosDescription(mat.descripcion)) {
+        const rawUnidades = parseFloat(document.getElementById('reg-cantidad-unidades').value);
+        if (isNaN(rawUnidades) || rawUnidades <= 0) {
+          showToast('Ingresa la Cantidad en unidades para Tubing o Caños.', 'warning');
+          return;
+        }
+        cantidadUnidades = rawUnidades;
+      }
+
+      multiItemsBuffer.push({
+        codigo: mat.codigo,
+        descripcion: mat.descripcion,
+        unidad: mat.unidad,
+        cantidad,
+        cantidadUnidades
+      });
+
+      // Limpiar casillas de selección para el siguiente ítem
+      document.getElementById('reg-codigo').value = '';
+      document.getElementById('reg-descripcion').value = '';
+      document.getElementById('reg-unidad').value = '';
+      document.getElementById('reg-cantidad').value = '';
+      document.getElementById('reg-cantidad-unidades').value = '';
+      const dropdown = document.getElementById('codigo-suggestions-dropdown');
+      if (dropdown) dropdown.classList.add('hidden');
+      handleMaterialSelect();
+
+      renderMultiItemTable();
+      showToast(`Ítem ${mat.codigo} agregado a la lista del despacho.`, 'success');
+    }
+
+    function renderMultiItemTable() {
+      const container = document.getElementById('multi-item-container');
+      const tbody = document.getElementById('multi-item-tbody');
+      const countSpan = document.getElementById('multi-item-count');
+
+      if (multiItemsBuffer.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      countSpan.textContent = multiItemsBuffer.length;
+      tbody.innerHTML = multiItemsBuffer.map((item, idx) => `
+        <tr class="hover:bg-gray-50">
+          <td class="py-2.5 px-4 font-semibold text-gray-500">${idx + 1}</td>
+          <td class="py-2.5 px-4 font-mono text-xs font-bold text-slateOps">${item.codigo}</td>
+          <td class="py-2.5 px-4 text-gray-700">${item.descripcion}</td>
+          <td class="py-2.5 px-4 text-right font-bold text-gray-800">${item.cantidad}</td>
+          <td class="py-2.5 px-4 text-right font-semibold text-slateOps">${item.cantidadUnidades != null ? item.cantidadUnidades : '-'}</td>
+          <td class="py-2.5 px-4 text-xs font-semibold text-gray-500">${item.unidad}</td>
+          <td class="py-2.5 px-4 text-center">
+            <button type="button" onclick="removeMultiItem(${idx})" class="text-xs font-semibold text-red-600 hover:underline">Quitar</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function removeMultiItem(idx) {
+      multiItemsBuffer.splice(idx, 1);
+      renderMultiItemTable();
+    }
+
+    function clearMultiItems() {
+      multiItemsBuffer = [];
+      renderMultiItemTable();
+    }
+
+    function resetRegistroForm() {
+      document.getElementById('form-registro-despacho').reset();
+      document.getElementById('reg-fecha').value = getTodayISO();
+      updateSemanaFromFecha();
+      handleMaterialSelect();
+      clearMultiItems();
+    }
+
+    function handleGuardarDespacho(e) {
+      e.preventDefault();
+      const fecha = document.getElementById('reg-fecha').value;
+      const semana = document.getElementById('reg-semana').value || getISOWeekString(fecha);
+      const area = document.getElementById('reg-area').value;
+      const rq = document.getElementById('reg-rq').value.trim();
+      const destino = document.getElementById('reg-destino').value.trim();
+      const notaSalida = document.getElementById('reg-nota').value.trim();
+      const estado = document.getElementById('reg-estado').value;
+      const observaciones = document.getElementById('reg-observaciones').value.trim();
+
+      if (!fecha || !area || !rq || !destino) {
+        showToast('Completa los campos obligatorios de cabecera.', 'warning');
+        return;
+      }
+
+      const itemsToSave = [...multiItemsBuffer];
+      const currentCodigo = document.getElementById('reg-codigo').value.trim().toUpperCase();
+      const currentCantidad = parseFloat(document.getElementById('reg-cantidad').value);
+
+      if (currentCodigo) {
+        const mat = maestroMateriales.find(m => m.codigo.toUpperCase() === currentCodigo);
+        if (!mat && itemsToSave.length === 0) {
+          showToast(`El código "${currentCodigo}" no existe en el Maestro de Materiales.`, 'warning');
+          return;
+        }
+        if (mat && !isNaN(currentCantidad) && currentCantidad > 0) {
+          let cantidadUnidades = null;
+          if (isTubingOrCanosDescription(mat.descripcion)) {
+            const rawUnidades = parseFloat(document.getElementById('reg-cantidad-unidades').value);
+            if (isNaN(rawUnidades) || rawUnidades <= 0) {
+              showToast('Ingresa la Cantidad en unidades para Tubing o Caños.', 'warning');
+              return;
+            }
+            cantidadUnidades = rawUnidades;
+          }
+          itemsToSave.push({
+            codigo: mat.codigo,
+            descripcion: mat.descripcion,
+            unidad: mat.unidad,
+            cantidad: currentCantidad,
+            cantidadUnidades
+          });
+        }
+      }
+
+      if (itemsToSave.length === 0) {
+        showToast('Selecciona al menos un material y una cantidad válida.', 'warning');
+        return;
+      }
+
+      let nextId = despachos.length > 0 ? Math.max(...despachos.map(d => d.id)) + 1 : 1;
+      itemsToSave.forEach(item => {
+        despachos.unshift({
+          id: nextId++,
+          fecha,
+          semana,
+          area,
+          rq,
+          destino,
+          codigo: item.codigo,
+          descripcion: item.descripcion,
+          cantidad: item.cantidad,
+          cantidadUnidades: item.cantidadUnidades ?? null,
+          unidad: item.unidad,
+          notaSalida,
+          observaciones,
+          estado
+        });
+      });
+
+      saveAllToStorage();
+      showToast(`Se registraron ${itemsToSave.length} ítem(s) de despacho correctamente.`, 'success');
+      resetRegistroForm();
+    }
+
+    // =========================================================================
+    // 6. CONSULTA AVANZADA, SELECCIÓN MÚLTIPLE, EDICIÓN Y ELIMINACIÓN
+    // =========================================================================
+    function initConsultaFilters() {
+      const areaSelect = document.getElementById('cons-filter-area');
+      const currentArea = areaSelect.value;
+      const areas = [...new Set([
+        ...maestroAreas.map(a => a.id),
+        ...despachos.map(d => d.area)
+      ].filter(Boolean))].sort();
+
+      areaSelect.innerHTML = '<option value="">Todas las Áreas</option>' +
+        areas.map(a => `<option value="${a}">${a}</option>`).join('');
+
+      if ([...areaSelect.options].some(o => o.value === currentArea)) {
+        areaSelect.value = currentArea;
+      }
+    }
+
+    function getConsultaFilteredData() {
+      const fechaFilter = document.getElementById('cons-select-fecha')?.value || '';
+      const destSearch = (document.getElementById('cons-search-destino')?.value || '').trim().toLowerCase();
+      const rqSearch = (document.getElementById('cons-search-rq')?.value || '').trim().toLowerCase();
+      const areaFilter = document.getElementById('cons-filter-area')?.value || '';
+
+      return despachos
+        .filter(d => {
+          const matchFecha = !fechaFilter || d.fecha === fechaFilter;
+          const matchDest = !destSearch || d.destino.toLowerCase().includes(destSearch);
+          const matchRq = !rqSearch || d.rq.toLowerCase().includes(rqSearch);
+          const matchArea = !areaFilter || d.area === areaFilter;
+          return matchFecha && matchDest && matchRq && matchArea;
+        })
+        .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id);
+    }
+
+    function toggleSelectConsultaItem(id) {
+      if (selectedConsultaIds.has(id)) {
+        selectedConsultaIds.delete(id);
+      } else {
+        selectedConsultaIds.add(id);
+      }
+      syncConsultaSelectionUI();
+      renderConsultaView();
+    }
+
+    function toggleSelectAllConsultaItems(checked) {
+      const visibleRows = getConsultaFilteredData();
+      if (checked) {
+        visibleRows.forEach(d => selectedConsultaIds.add(d.id));
+      } else {
+        visibleRows.forEach(d => selectedConsultaIds.delete(d.id));
+      }
+      syncConsultaSelectionUI();
+      renderConsultaView();
+    }
+
+    function clearAllConsultaSelections() {
+      selectedConsultaIds.clear();
+      syncConsultaSelectionUI();
+      renderConsultaView();
+    }
+
+    function syncConsultaSelectionUI() {
+      const count = selectedConsultaIds.size;
+      const bulkBar = document.getElementById('cons-bulk-bar');
+      const editPanel = document.getElementById('cons-edit-panel');
+
+      if (count > 0) {
+        bulkBar.classList.remove('hidden');
+        document.getElementById('cons-selected-count').textContent = count;
+        document.getElementById('cons-delete-btn-label').textContent =
+          count === 1 ? 'Eliminar Ítem Seleccionado' : `Eliminar en Grupo (${count})`;
+      } else {
+        bulkBar.classList.add('hidden');
+      }
+
+      if (count === 1) {
+        const [onlyId] = [...selectedConsultaIds];
+        const item = despachos.find(d => d.id === onlyId);
+        if (item) {
+          populateConsultaEditForm(item);
+          editPanel.classList.remove('hidden');
+        }
+      } else {
+        editPanel.classList.add('hidden');
+      }
+    }
+
+    function syncConsultaEditUnidadesField(descripcion, existingUnidades = null) {
+      const container = document.getElementById('cons-edit-unidades-container');
+      const inputUnidades = document.getElementById('cons-edit-cantidad-unidades');
+      if (!container || !inputUnidades) return;
+
+      if (isTubingOrCanosDescription(descripcion)) {
+        container.classList.remove('hidden');
+        inputUnidades.required = true;
+        if (existingUnidades !== null && existingUnidades !== undefined && existingUnidades !== '') {
+          inputUnidades.value = existingUnidades;
+        }
+      } else {
+        container.classList.add('hidden');
+        inputUnidades.required = false;
+        inputUnidades.value = '';
+      }
+    }
+
+    function populateConsultaEditForm(item) {
+      document.getElementById('cons-edit-id').value = item.id;
+      document.getElementById('cons-edit-fecha').value = item.fecha;
+
+      const areaSel = document.getElementById('cons-edit-area');
+      const uniqueAreas = [...new Set([...maestroAreas.map(a => a.id), item.area].filter(Boolean))];
+      areaSel.innerHTML = uniqueAreas.map(a => `<option value="${a}">${a}</option>`).join('');
+      areaSel.value = item.area;
+
+      document.getElementById('cons-edit-rq').value = item.rq;
+      document.getElementById('cons-edit-destino').value = item.destino;
+
+      const codSel = document.getElementById('cons-edit-codigo');
+      const allCodes = [...maestroMateriales];
+      if (!allCodes.some(m => m.codigo === item.codigo)) {
+        allCodes.unshift({ codigo: item.codigo, descripcion: item.descripcion, unidad: item.unidad });
+      }
+      codSel.innerHTML = allCodes.map(m => `<option value="${m.codigo}">${m.codigo} - ${m.descripcion}</option>`).join('');
+      codSel.value = item.codigo;
+
+      document.getElementById('cons-edit-cantidad').value = item.cantidad;
+      document.getElementById('cons-edit-nota').value = item.notaSalida || '';
+      document.getElementById('cons-edit-obs').value = item.observaciones || '';
+
+      const mat = maestroMateriales.find(m => m.codigo === item.codigo);
+      const descActual = mat ? mat.descripcion : item.descripcion;
+      syncConsultaEditUnidadesField(descActual, item.cantidadUnidades);
+    }
+
+    function confirmDeleteSingleConsultaItem(id) {
+      const item = despachos.find(d => d.id === id);
+      if (!item) return;
+      showConfirmModal(
+        'Eliminar Despacho',
+        `¿Estás seguro de eliminar el registro ${item.codigo} (${item.rq} - ${item.destino})? Esta acción no se puede deshacer.`,
+        () => {
+          despachos = despachos.filter(d => d.id !== id);
+          selectedConsultaIds.delete(id);
+          saveAllToStorage();
+          syncConsultaSelectionUI();
+          renderConsultaView();
+          showToast('Registro eliminado correctamente.', 'success');
+        }
+      );
+    }
+
+    function confirmDeleteSelectedConsultaItems() {
+      const idsToDelete = [...selectedConsultaIds];
+      if (idsToDelete.length === 0) return;
+
+      const label = idsToDelete.length === 1
+        ? 'el ítem seleccionado'
+        : `los ${idsToDelete.length} ítems seleccionados`;
+
+      showConfirmModal(
+        'Eliminar en Grupo',
+        `¿Estás seguro de eliminar ${label}? Esta acción no se puede deshacer.`,
+        () => {
+          despachos = despachos.filter(d => !selectedConsultaIds.has(d.id));
+          selectedConsultaIds.clear();
+          saveAllToStorage();
+          syncConsultaSelectionUI();
+          renderConsultaView();
+          showToast('Los registros seleccionados fueron eliminados.', 'success');
+        }
+      );
+    }
+
+    function cancelConsultaEdit() {
+      clearAllConsultaSelections();
+    }
+
+    function handleConsultaEditMaterialChange() {
+      const cod = document.getElementById('cons-edit-codigo').value;
+      const mat = maestroMateriales.find(m => m.codigo === cod);
+      const id = Number(document.getElementById('cons-edit-id').value);
+      const currentItem = despachos.find(d => d.id === id);
+      if (mat) {
+        document.getElementById('cons-edit-codigo').title = `${mat.descripcion} (${mat.unidad})`;
+        syncConsultaEditUnidadesField(mat.descripcion, currentItem?.cantidadUnidades ?? null);
+      } else {
+        syncConsultaEditUnidadesField(currentItem?.descripcion || '', currentItem?.cantidadUnidades ?? null);
+      }
+    }
+
+    function handleSaveConsultaEdit(e) {
+      e.preventDefault();
+      const id = Number(document.getElementById('cons-edit-id').value);
+      const idx = despachos.findIndex(d => d.id === id);
+      if (idx === -1) return;
+
+      const fecha = document.getElementById('cons-edit-fecha').value;
+      const semana = getISOWeekString(fecha) || despachos[idx].semana;
+      const area = document.getElementById('cons-edit-area').value;
+      const rq = document.getElementById('cons-edit-rq').value.trim();
+      const destino = document.getElementById('cons-edit-destino').value.trim();
+      const codigo = document.getElementById('cons-edit-codigo').value;
+      const cantidad = parseFloat(document.getElementById('cons-edit-cantidad').value);
+      const notaSalida = document.getElementById('cons-edit-nota').value.trim();
+      const observaciones = document.getElementById('cons-edit-obs').value.trim();
+
+      if (!fecha || !area || !rq || !destino || !codigo || isNaN(cantidad) || cantidad <= 0) {
+        showToast('Completa todos los campos obligatorios con valores válidos.', 'warning');
+        return;
+      }
+
+      const mat = maestroMateriales.find(m => m.codigo === codigo);
+      const descripcion = mat ? mat.descripcion : despachos[idx].descripcion;
+      const unidad = mat ? mat.unidad : despachos[idx].unidad;
+
+      let cantidadUnidades = null;
+      if (isTubingOrCanosDescription(descripcion)) {
+        const rawUnidades = parseFloat(document.getElementById('cons-edit-cantidad-unidades').value);
+        if (isNaN(rawUnidades) || rawUnidades <= 0) {
+          showToast('Ingresa la Cantidad en unidades para Tubing o Caños.', 'warning');
+          return;
+        }
+        cantidadUnidades = rawUnidades;
+      }
+
+      despachos[idx] = {
+        ...despachos[idx],
+        fecha,
+        semana,
+        area,
+        rq,
+        destino,
+        codigo,
+        descripcion,
+        cantidad,
+        cantidadUnidades,
+        unidad,
+        notaSalida,
+        observaciones
+      };
+
+      saveAllToStorage();
+      renderConsultaView();
+      showToast('Ítem actualizado correctamente.', 'success');
+    }
+
+    function renderConsultaView() {
+      const rows = getConsultaFilteredData();
+      const tbody = document.getElementById('cons-table-body');
+
+      // Limpiar selecciones de ítems que ya no existen
+      const existingIds = new Set(despachos.map(d => d.id));
+      [...selectedConsultaIds].forEach(id => {
+        if (!existingIds.has(id)) selectedConsultaIds.delete(id);
+      });
+      syncConsultaSelectionUI();
+
+      // KPIs de consulta: cálculo compartido de Cantidad Total Acumulada
+      const totalQty = calcularCantidadAcumulada(rows);
+      const uniqueRQs = new Set(rows.map(d => d.rq.trim().toLowerCase()).filter(Boolean)).size;
+
+      document.getElementById('cons-kpi-count').textContent = rows.length.toLocaleString('es-PE');
+      document.getElementById('cons-kpi-qty').textContent = Number.isInteger(totalQty)
+        ? totalQty.toLocaleString('es-PE')
+        : totalQty.toLocaleString('es-PE', { maximumFractionDigits: 2 });
+      document.getElementById('cons-kpi-rqs').textContent = uniqueRQs.toLocaleString('es-PE');
+
+      // Estado del checkbox maestro
+      const selectAllCb = document.getElementById('cons-select-all');
+      if (selectAllCb) {
+        selectAllCb.checked = rows.length > 0 && rows.every(r => selectedConsultaIds.has(r.id));
+      }
+
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="14" class="py-8 text-center text-gray-400 text-sm">No hay despachos que coincidan con el criterio de búsqueda.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(d => {
+        const isSelected = selectedConsultaIds.has(d.id);
+        return `
+          <tr class="${isSelected ? 'bg-indYellow/20 ring-1 ring-inset ring-indYellow' : 'hover:bg-gray-50'} transition">
+            <td class="py-3 px-4 text-center">
+              <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectConsultaItem(${d.id})" aria-label="Seleccionar ítem ${d.codigo}" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
+            </td>
+            <td class="py-3 px-4 whitespace-nowrap font-medium text-gray-800">${d.fecha}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-xs font-semibold text-gray-500">${d.semana || getISOWeekString(d.fecha)}</td>
+            <td class="py-3 px-4 whitespace-nowrap">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${d.area === 'Facilidades' ? 'bg-slateOps/10 text-slateOps' : 'bg-indYellow/25 text-amber-900'}">
+                ${d.area}
+              </span>
+            </td>
+            <td class="py-3 px-4 whitespace-nowrap font-semibold text-gray-700">${d.rq}</td>
+            <td class="py-3 px-4 font-medium text-gray-800">${d.destino}</td>
+            <td class="py-3 px-4 whitespace-nowrap font-mono text-xs font-bold text-slateOps">${d.codigo}</td>
+            <td class="py-3 px-4 text-gray-600">${d.descripcion}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-right font-bold text-gray-800">${d.cantidad}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-right font-semibold text-slateOps">${d.cantidadUnidades != null ? d.cantidadUnidades : '-'}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-xs font-semibold text-gray-500">${d.unidad}</td>
+            <td class="py-3 px-4 text-gray-600">${d.notaSalida || '-'}</td>
+            <td class="py-3 px-4 text-gray-600">${d.observaciones || '-'}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-center">
+              <button type="button" onclick="confirmDeleteSingleConsultaItem(${d.id})" class="px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition">
+                Eliminar
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 7. EXPORTACIÓN A EXCEL (.xlsx) Y TABLAS MAESTRAS
+    // =========================================================================
+    function exportStyledXlsx(filename, headers, rowsData) {
+      try {
+        if (typeof XLSX === 'undefined') {
+          showToast('No se pudo cargar la librería de Excel.', 'error');
+          return;
+        }
+
+        const aoa = [headers, ...rowsData];
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+        const borderStyle = {
+          top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+          right: { style: 'thin', color: { rgb: 'D1D5DB' } }
+        };
+
+        const headerStyle = {
+          font: { name: 'Daytona', sz: 9, bold: true, color: { rgb: 'FFFFFF' } },
+          fill: { fgColor: { rgb: '4B4F54' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          border: {
+            top: { style: 'thin', color: { rgb: '4B4F54' } },
+            bottom: { style: 'medium', color: { rgb: 'FFD100' } },
+            left: { style: 'thin', color: { rgb: '6B7280' } },
+            right: { style: 'thin', color: { rgb: '6B7280' } }
+          }
+        };
+
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        for (let r = range.s.r; r <= range.e.r; r++) {
+          for (let c = range.s.c; c <= range.e.c; c++) {
+            const cellRef = XLSX.utils.encode_cell({ r, c });
+            if (!ws[cellRef]) {
+              ws[cellRef] = { t: 's', v: '' };
+            }
+            if (r === 0) {
+              ws[cellRef].s = headerStyle;
+            } else {
+              const isAltRow = r % 2 === 0;
+              ws[cellRef].s = {
+                font: { name: 'Aptos', sz: 9, bold: false, color: { rgb: '1F2937' } },
+                fill: { fgColor: { rgb: isAltRow ? 'F9FAFB' : 'FFFFFF' } },
+                alignment: {
+                  horizontal: typeof ws[cellRef].v === 'number' ? 'right' : 'left',
+                  vertical: 'center',
+                  wrapText: true
+                },
+                border: borderStyle
+              };
+            }
+          }
+        }
+
+        ws['!cols'] = headers.map((h, colIdx) => {
+          let maxLen = String(h).length;
+          rowsData.forEach(row => {
+            const valStr = String(row[colIdx] ?? '');
+            if (valStr.length > maxLen) maxLen = valStr.length;
+          });
+          return { wch: Math.min(Math.max(maxLen + 4, 12), 45) };
+        });
+
+        ws['!rows'] = [
+          { hpt: 24 },
+          ...rowsData.map(() => ({ hpt: 19 }))
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+        XLSX.writeFile(wb, filename);
+        showToast(`Archivo ${filename} exportado correctamente.`, 'success');
+      } catch (err) {
+        console.error('Error exportando Excel:', err);
+        showToast('Ocurrió un error al generar el archivo Excel.', 'error');
+      }
+    }
+
+    function exportFilteredCSV(source) {
+      const rows = source === 'dashboard' ? getDashboardTableFilteredData() : getConsultaFilteredData();
+      if (rows.length === 0) {
+        showToast('No hay registros para exportar con los filtros actuales.', 'warning');
+        return;
+      }
+
+      const headers = [
+        'Fecha', 'Área', 'RQ', 'Destino', 'Código',
+        'Descripción', 'Cantidad despachada', 'Cantidad en unidades', 'Unidad de medida', 'Nota salida/otros'
+      ];
+      const rowsData = rows.map(d => [
+        d.fecha,
+        d.area,
+        d.rq,
+        d.destino,
+        d.codigo,
+        d.descripcion,
+        Number(d.cantidad) || 0,
+        d.cantidadUnidades != null ? Number(d.cantidadUnidades) : '',
+        d.unidad,
+        d.notaSalida || ''
+      ]);
+
+      exportStyledXlsx(`Despachos_${source}_${getTodayISO()}.xlsx`, headers, rowsData);
+    }
+
+    function switchMasterTab(tabName) {
+      const panelMat = document.getElementById('master-panel-materiales');
+      const panelAreas = document.getElementById('master-panel-areas');
+      const btnMat = document.getElementById('tab-btn-materiales');
+      const btnAreas = document.getElementById('tab-btn-areas');
+
+      if (tabName === 'materiales') {
+        panelMat.classList.remove('hidden');
+        panelAreas.classList.add('hidden');
+        btnMat.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slateOps text-white transition';
+        btnAreas.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 hover:bg-gray-100 transition';
+      } else {
+        panelMat.classList.add('hidden');
+        panelAreas.classList.remove('hidden');
+        btnAreas.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slateOps text-white transition';
+        btnMat.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 hover:bg-gray-100 transition';
+      }
+      renderMaestrosTables();
+    }
+
+    function handleSaveMaterial(e) {
+      e.preventDefault();
+      const editIdx = parseInt(document.getElementById('mat-edit-index').value, 10);
+      const codigo = document.getElementById('mat-codigo').value.trim().toUpperCase();
+      const descripcion = document.getElementById('mat-descripcion').value.trim();
+      const unidad = document.getElementById('mat-unidad').value;
+      const stock = parseFloat(document.getElementById('mat-stock').value) || 0;
+      const activo = document.getElementById('mat-activo').checked;
+
+      if (!codigo || !descripcion) {
+        showToast('Completa el código y la descripción del material.', 'warning');
+        return;
+      }
+
+      const duplicateIdx = maestroMateriales.findIndex((m, idx) => m.codigo.toUpperCase() === codigo && idx !== editIdx);
+      if (duplicateIdx !== -1) {
+        showToast(`Ya existe un material con el código ${codigo}.`, 'warning');
+        return;
+      }
+
+      const payload = { codigo, descripcion, unidad, stock, activo };
+      if (editIdx >= 0 && editIdx < maestroMateriales.length) {
+        maestroMateriales[editIdx] = payload;
+        showToast(`Material ${codigo} actualizado.`, 'success');
+      } else {
+        maestroMateriales.push(payload);
+        showToast(`Material ${codigo} agregado al maestro.`, 'success');
+      }
+
+      saveAllToStorage();
+      cancelEditMaterial();
+      renderMaestrosTables();
+    }
+
+    function startEditMaterial(idx) {
+      const m = maestroMateriales[idx];
+      if (!m) return;
+      document.getElementById('mat-edit-index').value = idx;
+      document.getElementById('mat-codigo').value = m.codigo;
+      document.getElementById('mat-descripcion').value = m.descripcion;
+      document.getElementById('mat-unidad').value = m.unidad;
+      document.getElementById('mat-stock').value = m.stock;
+      document.getElementById('mat-activo').checked = Boolean(m.activo);
+      document.getElementById('mat-form-title').textContent = `Editando Material: ${m.codigo}`;
+      document.getElementById('mat-cancel-edit').classList.remove('hidden');
+    }
+
+    function cancelEditMaterial() {
+      document.getElementById('form-maestro-material').reset();
+      document.getElementById('mat-edit-index').value = '-1';
+      document.getElementById('mat-stock').value = '0';
+      document.getElementById('mat-activo').checked = true;
+      document.getElementById('mat-form-title').textContent = 'Agregar / Editar Material';
+      document.getElementById('mat-cancel-edit').classList.add('hidden');
+    }
+
+    function toggleMaterialActivo(idx) {
+      if (!maestroMateriales[idx]) return;
+      maestroMateriales[idx].activo = !maestroMateriales[idx].activo;
+      saveAllToStorage();
+      renderMaestrosTables();
+      showToast(`Estado de ${maestroMateriales[idx].codigo} actualizado.`, 'success');
+    }
+
+    function toggleSelectMaterial(codigo) {
+      if (selectedMaterialCodes.has(codigo)) {
+        selectedMaterialCodes.delete(codigo);
+      } else {
+        selectedMaterialCodes.add(codigo);
+      }
+      renderMaestrosTables();
+    }
+
+    function toggleSelectAllMaterials(checked) {
+      if (checked) {
+        maestroMateriales.forEach(m => selectedMaterialCodes.add(m.codigo));
+      } else {
+        maestroMateriales.forEach(m => selectedMaterialCodes.delete(m.codigo));
+      }
+      renderMaestrosTables();
+    }
+
+    function clearAllMaterialSelections() {
+      selectedMaterialCodes.clear();
+      renderMaestrosTables();
+    }
+
+    function confirmDeleteSingleMaterial(codigo) {
+      const mat = maestroMateriales.find(m => m.codigo === codigo);
+      if (!mat) return;
+      showConfirmModal(
+        'Eliminar Material',
+        `¿Estás seguro de eliminar el material ${mat.codigo} (${mat.descripcion}) del maestro?`,
+        () => {
+          maestroMateriales = maestroMateriales.filter(m => m.codigo !== codigo);
+          selectedMaterialCodes.delete(codigo);
+          saveAllToStorage();
+          renderMaestrosTables();
+          showToast(`Material ${codigo} eliminado.`, 'success');
+        }
+      );
+    }
+
+    function confirmDeleteSelectedMaterials() {
+      const codes = [...selectedMaterialCodes];
+      if (codes.length === 0) return;
+
+      const label = codes.length === 1
+        ? `el material ${codes[0]}`
+        : `los ${codes.length} materiales seleccionados`;
+
+      showConfirmModal(
+        'Eliminar Materiales en Grupo',
+        `¿Estás seguro de eliminar ${label}? Esta acción no se puede deshacer.`,
+        () => {
+          maestroMateriales = maestroMateriales.filter(m => !selectedMaterialCodes.has(m.codigo));
+          selectedMaterialCodes.clear();
+          saveAllToStorage();
+          renderMaestrosTables();
+          showToast('Materiales seleccionados eliminados.', 'success');
+        }
+      );
+    }
+
+    function exportMaestroMaterialesCSV() {
+      const headers = ['codigo', 'descripcion', 'unidade medida', 'stock referencial'];
+      const rowsData = maestroMateriales.map(m => [
+        m.codigo,
+        m.descripcion,
+        m.unidad,
+        Number(m.stock) || 0
+      ]);
+      exportStyledXlsx('Maestro_materiales.xlsx', headers, rowsData);
+    }
+
+    function handleImportMaterialesCSV(event) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file) return;
+
+      if (typeof XLSX === 'undefined') {
+        showToast('Librería de Excel no disponible.', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          if (!firstSheetName) {
+            showToast('Archivo no cumple con el formato', 'error');
+            return;
+          }
+
+          const worksheet = workbook.Sheets[firstSheetName];
+          const aoa = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+          if (!aoa || aoa.length < 2) {
+            showToast('Archivo no cumple con el formato', 'error');
+            return;
+          }
+
+          const expectedHeaders = ['codigo', 'descripcion', 'unidade medida', 'stock referencial'];
+          const actualHeaders = aoa[0].slice(0, 4).map(h => String(h).trim().toLowerCase());
+
+          const headersMatch = expectedHeaders.every((exp, i) => actualHeaders[i] === exp);
+          if (!headersMatch || aoa[0].length < 4) {
+            showToast('Archivo no cumple con el formato', 'error');
+            return;
+          }
+
+          let importedCount = 0;
+          for (let i = 1; i < aoa.length; i++) {
+            const row = aoa[i];
+            const codigo = String(row[0] ?? '').trim().toUpperCase();
+            const descripcion = String(row[1] ?? '').trim();
+            const unidad = String(row[2] ?? 'UND').trim().toUpperCase() || 'UND';
+            const stockRaw = parseFloat(row[3]);
+            const stock = isNaN(stockRaw) ? 0 : stockRaw;
+
+            if (!codigo && !descripcion) continue;
+            if (!codigo || !descripcion) {
+              showToast('Archivo no cumple con el formato', 'error');
+              return;
+            }
+
+            const existingIdx = maestroMateriales.findIndex(m => m.codigo.toUpperCase() === codigo);
+            if (existingIdx !== -1) {
+              maestroMateriales[existingIdx] = {
+                ...maestroMateriales[existingIdx],
+                codigo,
+                descripcion,
+                unidad,
+                stock
+              };
+            } else {
+              maestroMateriales.push({
+                codigo,
+                descripcion,
+                unidad,
+                stock,
+                activo: true
+              });
+            }
+            importedCount++;
+          }
+
+          if (importedCount === 0) {
+            showToast('Archivo no cumple con el formato', 'error');
+            return;
+          }
+
+          saveAllToStorage();
+          renderMaestrosTables();
+          showToast(`Se cargaron ${importedCount} registro(s) en Maestro_materiales.`, 'success');
+        } catch (err) {
+          console.error('Error al importar archivo:', err);
+          showToast('Archivo no cumple con el formato', 'error');
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    function handleSaveArea(e) {
+      e.preventDefault();
+      const editIdx = parseInt(document.getElementById('area-edit-index').value, 10);
+      const idArea = document.getElementById('area-id').value.trim();
+      const nombre = document.getElementById('area-nombre').value.trim();
+      const apellidos = document.getElementById('area-apellidos').value.trim();
+      const cc = document.getElementById('area-cc').value.trim().toUpperCase();
+      const activo = document.getElementById('area-activo').checked;
+
+      if (!idArea || !nombre || !apellidos || !cc) {
+        showToast('Completa ID/AREA, NOMBRE, APELLIDOS y C.C.', 'warning');
+        return;
+      }
+
+      if (editIdx >= 0 && editIdx < maestroAreas.length) {
+        maestroAreas[editIdx] = {
+          ...maestroAreas[editIdx],
+          id: idArea,
+          nombre,
+          apellidos,
+          cc,
+          activo
+        };
+        showToast('Registro de área solicitante actualizado.', 'success');
+      } else {
+        maestroAreas.push({
+          uid: `area-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          id: idArea,
+          nombre,
+          apellidos,
+          cc,
+          activo
+        });
+        showToast('Nuevo solicitante agregado al Maestro Área Solicitante.', 'success');
+      }
+
+      saveAllToStorage();
+      cancelEditArea();
+      renderMaestrosTables();
+    }
+
+    function startEditArea(idx) {
+      const a = maestroAreas[idx];
+      if (!a) return;
+      document.getElementById('area-edit-index').value = idx;
+      document.getElementById('area-id').value = a.id;
+      document.getElementById('area-nombre').value = a.nombre;
+      document.getElementById('area-apellidos').value = a.apellidos;
+      document.getElementById('area-cc').value = a.cc;
+      document.getElementById('area-activo').checked = a.activo !== false;
+      document.getElementById('area-form-title').textContent = `Editando Solicitante: ${a.nombre} ${a.apellidos}`;
+      document.getElementById('area-cancel-edit').classList.remove('hidden');
+    }
+
+    function cancelEditArea() {
+      document.getElementById('form-maestro-area').reset();
+      document.getElementById('area-edit-index').value = '-1';
+      document.getElementById('area-activo').checked = true;
+      document.getElementById('area-form-title').textContent = 'Agregar / Editar Área Solicitante';
+      document.getElementById('area-cancel-edit').classList.add('hidden');
+    }
+
+    function toggleAreaActivo(idx) {
+      if (!maestroAreas[idx]) return;
+      maestroAreas[idx].activo = maestroAreas[idx].activo === false ? true : false;
+      saveAllToStorage();
+      renderMaestrosTables();
+      showToast('Estado del solicitante actualizado.', 'success');
+    }
+
+    function toggleSelectArea(uid) {
+      if (selectedAreaUids.has(uid)) {
+        selectedAreaUids.delete(uid);
+      } else {
+        selectedAreaUids.add(uid);
+      }
+      renderMaestrosTables();
+    }
+
+    function toggleSelectAllAreas(checked) {
+      if (checked) {
+        maestroAreas.forEach(a => selectedAreaUids.add(a.uid));
+      } else {
+        maestroAreas.forEach(a => selectedAreaUids.delete(a.uid));
+      }
+      renderMaestrosTables();
+    }
+
+    function clearAllAreaSelections() {
+      selectedAreaUids.clear();
+      renderMaestrosTables();
+    }
+
+    function confirmDeleteSingleArea(uid) {
+      const area = maestroAreas.find(a => a.uid === uid);
+      if (!area) return;
+      showConfirmModal(
+        'Eliminar Registro de Área',
+        `¿Estás seguro de eliminar a ${area.nombre} ${area.apellidos} (${area.id} - ${area.cc})?`,
+        () => {
+          maestroAreas = maestroAreas.filter(a => a.uid !== uid);
+          selectedAreaUids.delete(uid);
+          saveAllToStorage();
+          renderMaestrosTables();
+          showToast('Registro de área eliminado.', 'success');
+        }
+      );
+    }
+
+    function confirmDeleteSelectedAreas() {
+      const uids = [...selectedAreaUids];
+      if (uids.length === 0) return;
+
+      const label = uids.length === 1
+        ? 'el registro de área seleccionado'
+        : `los ${uids.length} registros de área seleccionados`;
+
+      showConfirmModal(
+        'Eliminar Áreas en Grupo',
+        `¿Estás seguro de eliminar ${label}? Esta acción no se puede deshacer.`,
+        () => {
+          maestroAreas = maestroAreas.filter(a => !selectedAreaUids.has(a.uid));
+          selectedAreaUids.clear();
+          saveAllToStorage();
+          renderMaestrosTables();
+          showToast('Registros de área seleccionados eliminados.', 'success');
+        }
+      );
+    }
+
+    function renderMaestrosTables() {
+      // Limpiar selecciones huérfanas
+      const validMatCodes = new Set(maestroMateriales.map(m => m.codigo));
+      [...selectedMaterialCodes].forEach(c => {
+        if (!validMatCodes.has(c)) selectedMaterialCodes.delete(c);
+      });
+
+      const validAreaUids = new Set(maestroAreas.map(a => a.uid));
+      [...selectedAreaUids].forEach(u => {
+        if (!validAreaUids.has(u)) selectedAreaUids.delete(u);
+      });
+
+      // Barra masiva Materiales
+      const matBulkBar = document.getElementById('mat-bulk-bar');
+      if (matBulkBar) {
+        if (selectedMaterialCodes.size > 0) {
+          matBulkBar.classList.remove('hidden');
+          document.getElementById('mat-selected-count').textContent = selectedMaterialCodes.size;
+          document.getElementById('mat-delete-btn-label').textContent =
+            selectedMaterialCodes.size === 1 ? 'Eliminar Material' : `Eliminar en Grupo (${selectedMaterialCodes.size})`;
+        } else {
+          matBulkBar.classList.add('hidden');
+        }
+      }
+
+      const matSelectAll = document.getElementById('mat-select-all');
+      if (matSelectAll) {
+        matSelectAll.checked = maestroMateriales.length > 0 && maestroMateriales.every(m => selectedMaterialCodes.has(m.codigo));
+      }
+
+      const matTbody = document.getElementById('maestro-mat-tbody');
+      if (maestroMateriales.length === 0) {
+        matTbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-gray-400">No hay materiales registrados.</td></tr>';
+      } else {
+        matTbody.innerHTML = maestroMateriales.map((m, idx) => {
+          const isSel = selectedMaterialCodes.has(m.codigo);
+          return `
+            <tr class="${isSel ? 'bg-indYellow/20 ring-1 ring-inset ring-indYellow' : 'hover:bg-gray-50'} transition">
+              <td class="py-3 px-4 text-center">
+                <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleSelectMaterial('${m.codigo.replace(/'/g, "\\'")}')" aria-label="Seleccionar material ${m.codigo}" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
+              </td>
+              <td class="py-3 px-4 font-mono text-xs font-bold text-slateOps">${m.codigo}</td>
+              <td class="py-3 px-4 font-medium text-gray-800">${m.descripcion}</td>
+              <td class="py-3 px-4 text-xs font-semibold text-gray-600">${m.unidad}</td>
+              <td class="py-3 px-4 text-right font-bold text-gray-800">${m.stock}</td>
+              <td class="py-3 px-4 text-center">
+                <button type="button" onclick="toggleMaterialActivo(${idx})" class="px-2.5 py-1 rounded-full text-xs font-semibold ${m.activo ? 'bg-indLime/25 text-green-800' : 'bg-gray-200 text-gray-600'}">
+                  ${m.activo ? 'Activo' : 'Inactivo'}
+                </button>
+              </td>
+              <td class="py-3 px-4 text-center whitespace-nowrap space-x-2">
+                <button type="button" onclick="startEditMaterial(${idx})" class="text-xs font-semibold text-slateOps hover:underline">Editar</button>
+                <button type="button" onclick="confirmDeleteSingleMaterial('${m.codigo.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition">Eliminar</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Barra masiva Áreas
+      const areaBulkBar = document.getElementById('area-bulk-bar');
+      if (areaBulkBar) {
+        if (selectedAreaUids.size > 0) {
+          areaBulkBar.classList.remove('hidden');
+          document.getElementById('area-selected-count').textContent = selectedAreaUids.size;
+          document.getElementById('area-delete-btn-label').textContent =
+            selectedAreaUids.size === 1 ? 'Eliminar Registro' : `Eliminar en Grupo (${selectedAreaUids.size})`;
+        } else {
+          areaBulkBar.classList.add('hidden');
+        }
+      }
+
+      const areaSelectAll = document.getElementById('area-select-all');
+      if (areaSelectAll) {
+        areaSelectAll.checked = maestroAreas.length > 0 && maestroAreas.every(a => selectedAreaUids.has(a.uid));
+      }
+
+      const areaTbody = document.getElementById('maestro-area-tbody');
+      if (maestroAreas.length === 0) {
+        areaTbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-gray-400">No hay registros en el Maestro Área Solicitante.</td></tr>';
+      } else {
+        areaTbody.innerHTML = maestroAreas.map((a, idx) => {
+          const isSel = selectedAreaUids.has(a.uid);
+          const isActive = a.activo !== false;
+          return `
+            <tr class="${isSel ? 'bg-indYellow/20 ring-1 ring-inset ring-indYellow' : 'hover:bg-gray-50'} transition">
+              <td class="py-3 px-4 text-center">
+                <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleSelectArea('${a.uid}')" aria-label="Seleccionar solicitante ${a.nombre} ${a.apellidos}" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
+              </td>
+              <td class="py-3 px-4 font-semibold text-gray-800">${a.id}</td>
+              <td class="py-3 px-4 font-medium text-gray-800">${a.nombre}</td>
+              <td class="py-3 px-4 font-medium text-gray-800">${a.apellidos}</td>
+              <td class="py-3 px-4 font-mono text-xs font-semibold text-slateOps">${a.cc}</td>
+              <td class="py-3 px-4 text-center">
+                <button type="button" onclick="toggleAreaActivo(${idx})" class="px-2.5 py-1 rounded-full text-xs font-semibold ${isActive ? 'bg-indLime/25 text-green-800' : 'bg-gray-200 text-gray-600'}">
+                  ${isActive ? 'Activo' : 'Inactivo'}
+                </button>
+              </td>
+              <td class="py-3 px-4 text-center whitespace-nowrap space-x-2">
+                <button type="button" onclick="startEditArea(${idx})" class="text-xs font-semibold text-slateOps hover:underline">Editar</button>
+                <button type="button" onclick="confirmDeleteSingleArea('${a.uid}')" class="px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition">Eliminar</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    function confirmResetDemoData() {
+      showConfirmModal(
+        'Restaurar Datos de Ejemplo',
+        'Esto reemplazará los datos actuales en este navegador con los datos iniciales de demostración. ¿Continuar?',
+        () => {
+          maestroMateriales = JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
+          maestroAreas = JSON.parse(JSON.stringify(DEFAULT_AREAS));
+          despachos = JSON.parse(JSON.stringify(DEFAULT_DESPACHOS));
+          multiItemsBuffer = [];
+          selectedConsultaIds.clear();
+          selectedMaterialCodes.clear();
+          selectedAreaUids.clear();
+          saveAllToStorage();
+          showToast('Datos de ejemplo restaurados correctamente.', 'success');
+          switchView('dashboard');
+        }
+      );
+    }
+
+    // =========================================================================
+    // 8. INICIALIZACIÓN AL CARGAR LA PÁGINA
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+      const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+      const sidebar = document.getElementById('sidebar');
+
+      if (mobileMenuBtn && sidebar) {
+        mobileMenuBtn.addEventListener('click', () => sidebar.classList.remove('-translate-x-full'));
+      }
+      if (closeSidebarBtn && sidebar) {
+        closeSidebarBtn.addEventListener('click', () => sidebar.classList.add('-translate-x-full'));
+      }
+
+      loadDataFromStorage();
+      switchView('dashboard');
+    });
+  </script>
+</body>
+</html>
