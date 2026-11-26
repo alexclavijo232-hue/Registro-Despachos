@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema de Gestión de Despachos v4.5 (Supabase)</title>
+  <title>Sistema de Gestión de Despachos v4.7 (Supabase)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js para gráficos de indicadores -->
@@ -50,16 +50,15 @@
       font-family: 'Aptos', 'Inter', sans-serif !important;
       font-size: 12px !important;
     }
-    /* Barras de desplazamiento compactas en todas las tablas */
+    /* Barras de desplazamiento compactas y discretas */
+    html,
+    body,
     table,
     .overflow-x-auto,
-    .overflow-y-auto,
-    ::-webkit-scrollbar {
+    .overflow-y-auto {
       scrollbar-width: thin;
       scrollbar-color: #9CA3AF transparent;
     }
-    table ::-webkit-scrollbar,
-    .overflow-x-auto::-webkit-scrollbar,
     ::-webkit-scrollbar {
       width: 4px;
       height: 4px;
@@ -71,8 +70,8 @@
     ::-webkit-scrollbar-thumb {
       background: #9CA3AF;
       border-radius: 9999px;
-      min-height: 24px;
-      min-width: 24px;
+      min-height: 20px;
+      min-width: 20px;
     }
     ::-webkit-scrollbar-thumb:hover {
       background: #6B7280;
@@ -254,13 +253,23 @@
 
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-200 border-l-4 border-l-indOrange flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Pendientes / Observados</p>
-            <p id="kpi-pendientes" class="text-3xl font-bold text-gray-800 mt-1">0</p>
-            <p class="text-xs text-gray-400 mt-1">Con observación o pendiente</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Estado de Actas</p>
+            <div class="flex items-baseline gap-3 mt-1.5">
+              <div>
+                <span class="block text-[10px] font-semibold uppercase text-green-700">Regularizadas</span>
+                <span id="kpi-actas-regularizadas" class="text-2xl font-bold text-gray-800">0</span>
+              </div>
+              <span class="text-gray-300 text-lg font-light">|</span>
+              <div>
+                <span class="block text-[10px] font-semibold uppercase text-orange-700">Pendientes</span>
+                <span id="kpi-actas-pendientes" class="text-2xl font-bold text-gray-800">0</span>
+              </div>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Ítems con nota tipo ACTA</p>
           </div>
-          <div class="w-12 h-12 rounded-xl bg-indOrange/20 text-orange-700 flex items-center justify-center">
+          <div class="w-12 h-12 rounded-xl bg-indOrange/20 text-orange-700 flex items-center justify-center shrink-0">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
           </div>
         </div>
@@ -310,8 +319,8 @@
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h3 class="text-base font-bold text-gray-800">Estado de Despachos</h3>
-              <p class="text-xs text-gray-500">Proporción entre completados y observados</p>
+              <h3 class="text-base font-bold text-gray-800">Estado de Actas</h3>
+              <p class="text-xs text-gray-500">Proporción entre actas regularizadas y pendientes</p>
             </div>
             <span class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Dona</span>
           </div>
@@ -384,14 +393,15 @@
 
             <div>
               <label for="reg-nota" class="block text-xs font-semibold text-gray-700 mb-1.5">Nota salida / otros</label>
-              <input type="text" id="reg-nota" placeholder="Ej. NS-00984 / Guía Remisión" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none" />
+              <input type="text" id="reg-nota" oninput="syncRegistroActaField()" placeholder="Ej. ACTA-001 / NS-00984" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none" />
             </div>
 
-            <div>
-              <label for="reg-estado" class="block text-xs font-semibold text-gray-700 mb-1.5">Estado del Despacho</label>
-              <select id="reg-estado" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm bg-white focus:border-slateOps focus:outline-none">
-                <option value="Completado">Completado</option>
-                <option value="Observado">Observado / Pendiente</option>
+            <div id="reg-estado-acta-wrapper">
+              <label for="reg-estado-acta" class="block text-xs font-semibold text-gray-700 mb-1.5">Estado de Acta</label>
+              <select id="reg-estado-acta" disabled class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-2.5 text-sm font-semibold text-gray-500 cursor-not-allowed focus:border-slateOps focus:outline-none">
+                <option value="-">-</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Regularizado">Regularizado</option>
               </select>
             </div>
           </div>
@@ -611,7 +621,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label for="cons-edit-codigo" class="block text-xs font-semibold text-gray-700 mb-1">Código Material *</label>
               <select id="cons-edit-codigo" required onchange="handleConsultaEditMaterialChange()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none"></select>
@@ -622,7 +632,15 @@
             </div>
             <div>
               <label for="cons-edit-nota" class="block text-xs font-semibold text-gray-700 mb-1">Nota salida/otros</label>
-              <input type="text" id="cons-edit-nota" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              <input type="text" id="cons-edit-nota" oninput="syncConsultaEditActaField()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+            </div>
+            <div>
+              <label for="cons-edit-estado-acta" class="block text-xs font-semibold text-gray-700 mb-1">Estado de Acta</label>
+              <select id="cons-edit-estado-acta" disabled class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-500 cursor-not-allowed focus:border-slateOps focus:outline-none">
+                <option value="-">-</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Regularizado">Regularizado</option>
+              </select>
             </div>
             <div>
               <label for="cons-edit-obs" class="block text-xs font-semibold text-gray-700 mb-1">Observaciones</label>
@@ -718,14 +736,14 @@
                 <th class="py-3 px-4 font-semibold">Área</th>
                 <th class="py-3 px-4 font-semibold">RQ</th>
                 <th class="py-3 px-4 font-semibold">Destino</th>
-                <th class="py-3 px-4 font-semibold">Responsable</th>
-                <th class="py-3 px-4 font-semibold">Nota salida/otros</th>
                 <th class="py-3 px-4 font-semibold">Código</th>
                 <th class="py-3 px-4 font-semibold">Descripción</th>
+                <th class="py-3 px-4 font-semibold">Unidad de medida</th>
                 <th class="py-3 px-4 font-semibold text-right">Cantidad despachada</th>
                 <th class="py-3 px-4 font-semibold text-right">Cantidad en unidades</th>
-                <th class="py-3 px-4 font-semibold">Unidad de medida</th>
-                <th class="py-3 px-4 font-semibold text-center">Acción</th>
+                <th class="py-3 px-4 font-semibold">Nota salida/otros</th>
+                <th class="py-3 px-4 font-semibold">Responsable</th>
+                <th class="py-3 px-4 font-semibold text-center">Estado de acta</th>
               </tr>
             </thead>
             <tbody id="cons-table-body" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
@@ -835,7 +853,7 @@
             <input
               type="text"
               id="mat-search-codigo"
-              oninput="renderMaestrosTables()"
+              oninput="handleMatSearchInput()"
               placeholder="Buscar por código (ej. MAT-001, 002)..."
               class="w-full rounded-xl border border-gray-300 pl-9 pr-8 py-2 text-sm uppercase focus:border-slateOps focus:outline-none"
             />
@@ -851,7 +869,16 @@
               ✕
             </button>
           </div>
-          <span id="mat-search-count" class="text-xs font-semibold text-gray-500">Mostrando 0 materiales</span>
+          <div class="flex flex-wrap items-center gap-3">
+            <label for="mat-page-size" class="text-xs font-semibold text-gray-500">Filas:</label>
+            <select id="mat-page-size" onchange="handleMatPageSizeChange()" class="rounded-xl border border-gray-300 bg-gray-50 px-2.5 py-1.5 text-xs font-semibold text-gray-700 focus:border-slateOps focus:outline-none">
+              <option value="100" selected>100</option>
+              <option value="250">250</option>
+              <option value="500">500</option>
+              <option value="ALL">Todos</option>
+            </select>
+            <span id="mat-search-count" class="text-xs font-semibold text-gray-500">Mostrando 0 materiales</span>
+          </div>
         </div>
 
         <div id="mat-bulk-bar" class="hidden bg-slateOps text-white px-5 py-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -890,6 +917,17 @@
               </thead>
               <tbody id="maestro-mat-tbody" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
             </table>
+          </div>
+          <div id="mat-pagination-bar" class="px-4 py-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-600">
+            <span id="mat-page-info">Página 1 de 1</span>
+            <div class="flex items-center gap-2">
+              <button type="button" id="mat-prev-page-btn" onclick="changeMatPage(-1)" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                Anterior
+              </button>
+              <button type="button" id="mat-next-page-btn" onclick="changeMatPage(1)" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                Siguiente
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1058,7 +1096,7 @@
         unidad: 'M',
         notaSalida: 'NS-00912',
         observaciones: 'Entrega completa en plataforma',
-        estado: 'Completado'
+        estadoActa: '-'
       },
       {
         id: 2,
@@ -1075,7 +1113,7 @@
         unidad: 'UND',
         notaSalida: 'NS-00918',
         observaciones: '',
-        estado: 'Completado'
+        estadoActa: '-'
       },
       {
         id: 3,
@@ -1090,9 +1128,9 @@
         descripcion: 'Válvula de compuerta 2" 1500 PSI',
         cantidad: 4,
         unidad: 'UND',
-        notaSalida: 'NS-00925',
+        notaSalida: 'ACTA-0045',
         observaciones: 'Falta certificado de prueba hidrostática',
-        estado: 'Observado'
+        estadoActa: 'Pendiente'
       },
       {
         id: 4,
@@ -1109,7 +1147,7 @@
         unidad: 'UND',
         notaSalida: 'NS-00931',
         observaciones: '',
-        estado: 'Completado'
+        estadoActa: '-'
       },
       {
         id: 5,
@@ -1124,9 +1162,9 @@
         descripcion: 'Cinta anticorrosiva Polyken 4"',
         cantidad: 6,
         unidad: 'CJ',
-        notaSalida: 'NS-00940',
+        notaSalida: 'ACTA-0051',
         observaciones: '',
-        estado: 'Completado'
+        estadoActa: 'Regularizado'
       },
       {
         id: 6,
@@ -1141,9 +1179,9 @@
         descripcion: 'Grasa sellante para roscas API',
         cantidad: 15,
         unidad: 'KG',
-        notaSalida: 'NS-00944',
+        notaSalida: 'ACTA-0058',
         observaciones: 'Pendiente firma de conformidad en campo',
-        estado: 'Observado'
+        estadoActa: 'Pendiente'
       }
     ];
 
@@ -1154,6 +1192,7 @@
     let selectedConsultaIds = new Set();
     let selectedMaterialCodes = new Set();
     let selectedAreaUids = new Set();
+    let matCurrentPage = 1;
     let chartTopDestinos = null;
     let chartTendencia = null;
     let chartPorArea = null;
@@ -1165,9 +1204,46 @@
       return clean || fallback;
     }
 
+    function isActaNotaSalida(notaSalida) {
+      return /\bacta\b/i.test(String(notaSalida || '').trim());
+    }
+
+    function normalizeEstadoActaValue(notaSalida, rawEstadoActa) {
+      if (!isActaNotaSalida(notaSalida)) {
+        return '-';
+      }
+      const clean = String(rawEstadoActa || '').trim().toLowerCase();
+      if (clean === 'regularizado') return 'Regularizado';
+      return 'Pendiente';
+    }
+
     // =========================================================================
     // 2. SINCRONIZACIÓN CON SUPABASE (despachos, despacho_items, maestros)
     // =========================================================================
+    async function fetchAllMaterialesFromSupabase() {
+      const pageSize = 1000;
+      let from = 0;
+      let allRows = [];
+
+      while (true) {
+        const { data, error } = await supabaseClient
+          .from('maestro_materiales')
+          .select('*')
+          .order('codigo', { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+
+        allRows = allRows.concat(data);
+
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+
+      return allRows;
+    }
+
     async function syncAllTablesToSupabase(showFeedback = false) {
       if (!supabaseClient) {
         setSupabaseBadge('SDK no cargado', false);
@@ -1185,10 +1261,12 @@
           activo: m.activo !== false
         }));
 
-        if (matRows.length > 0) {
+        const batchSize = 500;
+        for (let i = 0; i < matRows.length; i += batchSize) {
+          const chunk = matRows.slice(i, i + batchSize);
           const { error: matErr } = await supabaseClient
             .from('maestro_materiales')
-            .upsert(matRows, { onConflict: 'codigo' });
+            .upsert(chunk, { onConflict: 'codigo' });
           if (matErr) throw matErr;
         }
 
@@ -1215,6 +1293,7 @@
           despachos.forEach(d => {
             const parentId = Number(d.despachoId || d.id);
             const resp = normalizeResponsableValue(d.responsable);
+            const estadoActa = normalizeEstadoActaValue(d.notaSalida, d.estadoActa);
             if (!despHeaderMap.has(parentId)) {
               despHeaderMap.set(parentId, {
                 id: parentId,
@@ -1226,7 +1305,7 @@
                 destino: d.destino,
                 nota_salida: d.notaSalida || '',
                 observaciones: d.observaciones || '',
-                estado: d.estado || 'Completado'
+                estado: estadoActa === 'Pendiente' ? 'Observado' : 'Completado'
               });
             }
 
@@ -1292,28 +1371,28 @@
       try {
         setSupabaseBadge('Conectando...', true);
 
-        const [matRes, areaRes, despRes, itemsRes] = await Promise.all([
-          supabaseClient.from('maestro_materiales').select('*').order('codigo', { ascending: true }),
+        const [matAllData, areaRes, despRes, itemsRes] = await Promise.all([
+          fetchAllMaterialesFromSupabase(),
           supabaseClient.from('maestro_areas').select('*').order('uid', { ascending: true }),
           supabaseClient.from('despachos').select('*').order('id', { ascending: false }),
           supabaseClient.from('despacho_items').select('*').order('id', { ascending: false })
         ]);
 
-        if (matRes.error) throw matRes.error;
         if (areaRes.error) throw areaRes.error;
         if (despRes.error) throw despRes.error;
         if (itemsRes.error) throw itemsRes.error;
 
         let updatedFromCloud = false;
 
-        if (matRes.data && matRes.data.length > 0) {
-          maestroMateriales = matRes.data.map(m => ({
+        if (matAllData && matAllData.length > 0) {
+          maestroMateriales = matAllData.map(m => ({
             codigo: m.codigo,
             descripcion: m.descripcion,
             unidad: m.unidad,
             stock: Number(m.stock) || 0,
             activo: m.activo !== false
           }));
+          matCurrentPage = 1;
           updatedFromCloud = true;
         }
 
@@ -1331,8 +1410,12 @@
 
         if (itemsRes.data && itemsRes.data.length > 0) {
           const headerById = new Map((despRes.data || []).map(h => [Number(h.id), h]));
+          const localById = new Map(despachos.map(d => [Number(d.id), d]));
           despachos = itemsRes.data.map(item => {
             const h = headerById.get(Number(item.despacho_id)) || {};
+            const localPrev = localById.get(Number(item.id));
+            const notaSalida = h.nota_salida || '';
+            const inferredActa = h.estado === 'Completado' ? 'Regularizado' : 'Pendiente';
             return {
               id: Number(item.id),
               despachoId: Number(item.despacho_id || item.id),
@@ -1347,9 +1430,9 @@
               cantidad: Number(item.cantidad) || 0,
               cantidadUnidades: item.cantidad_unidades != null ? Number(item.cantidad_unidades) : null,
               unidad: item.unidad,
-              notaSalida: h.nota_salida || '',
+              notaSalida,
               observaciones: h.observaciones || '',
-              estado: h.estado || 'Completado'
+              estadoActa: normalizeEstadoActaValue(notaSalida, localPrev?.estadoActa || inferredActa)
             };
           });
           updatedFromCloud = true;
@@ -1360,7 +1443,9 @@
         if (updatedFromCloud) {
           saveLocalOnly();
           switchView(activeViewName);
-          if (showFeedback) showToast('Datos descargados desde Supabase.', 'success');
+          if (showFeedback) {
+            showToast(`Datos descargados desde Supabase (${maestroMateriales.length.toLocaleString('es-PE')} materiales).`, 'success');
+          }
         } else if (showFeedback) {
           showToast('Supabase está vacío aún. Usa "Subir Todo a Supabase" para cargar tus tablas.', 'warning');
         }
@@ -1396,6 +1481,8 @@
         despachos.forEach(d => {
           if (!d.despachoId) d.despachoId = d.id;
           d.responsable = normalizeResponsableValue(d.responsable);
+          const fallbackEstado = d.estado === 'Completado' ? 'Regularizado' : 'Pendiente';
+          d.estadoActa = normalizeEstadoActaValue(d.notaSalida, d.estadoActa || fallbackEstado);
         });
       } catch (err) {
         console.error('Error cargando localStorage:', err);
@@ -1567,28 +1654,41 @@
       return despachos.filter(d => d.fecha.startsWith(period));
     }
 
+    function getActasCounts(registros) {
+      let regularizadas = 0;
+      let pendientes = 0;
+      registros.forEach(d => {
+        if (!isActaNotaSalida(d.notaSalida)) return;
+        const estado = normalizeEstadoActaValue(d.notaSalida, d.estadoActa);
+        if (estado === 'Regularizado') {
+          regularizadas += 1;
+        } else {
+          pendientes += 1;
+        }
+      });
+      return { regularizadas, pendientes };
+    }
+
     function renderDashboard() {
       const periodData = getDashboardPeriodData();
 
       const totalDespachos = calcularTotalDespachosUnicos(periodData);
       const totalUnidades = calcularCantidadAcumulada(periodData);
       const destinosUnicos = new Set(periodData.map(d => d.destino.trim().toLowerCase()).filter(Boolean)).size;
-      const pendientesObs = periodData.filter(d =>
-        d.estado === 'Observado' || (d.observaciones && d.observaciones.trim().length > 0)
-      ).length;
+      const { regularizadas, pendientes } = getActasCounts(periodData);
 
       document.getElementById('kpi-total-despachos').textContent = totalDespachos.toLocaleString('es-PE');
       document.getElementById('kpi-total-unidades').textContent = Number.isInteger(totalUnidades)
         ? totalUnidades.toLocaleString('es-PE')
         : totalUnidades.toLocaleString('es-PE', { maximumFractionDigits: 2 });
       document.getElementById('kpi-destinos-atendidos').textContent = destinosUnicos.toLocaleString('es-PE');
-      document.getElementById('kpi-pendientes').textContent = pendientesObs.toLocaleString('es-PE');
+      document.getElementById('kpi-actas-regularizadas').textContent = regularizadas.toLocaleString('es-PE');
+      document.getElementById('kpi-actas-pendientes').textContent = pendientes.toLocaleString('es-PE');
 
-      renderDashboardCharts(periodData);
+      renderDashboardCharts(periodData, { regularizadas, pendientes });
     }
 
-    function renderDashboardCharts(periodData) {
-      // 1. Top 5 Destinos
+    function renderDashboardCharts(periodData, actasCounts) {
       const destMap = {};
       periodData.forEach(d => {
         const key = d.destino.trim() || 'Sin destino';
@@ -1621,7 +1721,6 @@
         });
       }
 
-      // 2. Tendencia de Despachos por Semana
       const weekMap = {};
       periodData.forEach(d => {
         const key = d.semana || getISOWeekString(d.fecha) || d.fecha;
@@ -1669,7 +1768,6 @@
         });
       }
 
-      // 3. Despachos por Área Solicitante (Barras horizontales)
       const areaMap = {};
       periodData.forEach(d => {
         const key = (d.area || 'Sin área').trim();
@@ -1703,9 +1801,7 @@
         });
       }
 
-      // 4. Estado de Despachos (Completado vs Observado)
-      const completadosCount = periodData.filter(d => d.estado !== 'Observado').length;
-      const observadosCount = periodData.filter(d => d.estado === 'Observado').length;
+      const counts = actasCounts || getActasCounts(periodData);
 
       const ctxEstado = document.getElementById('chart-estado')?.getContext('2d');
       if (ctxEstado) {
@@ -1713,9 +1809,9 @@
         chartEstado = new Chart(ctxEstado, {
           type: 'doughnut',
           data: {
-            labels: ['Completados', 'Observados / Pendientes'],
+            labels: ['Regularizadas', 'Pendientes'],
             datasets: [{
-              data: [completadosCount, observadosCount],
+              data: [counts.regularizadas, counts.pendientes],
               backgroundColor: ['#97D700', '#F18448'],
               borderColor: '#FFFFFF',
               borderWidth: 2
@@ -1750,6 +1846,22 @@
     function isTubingOrCanosDescription(descripcion) {
       const norm = normalizeSearchText(descripcion);
       return /\btubing\b/.test(norm) || /\bcano[s]?\b/.test(norm);
+    }
+
+    function syncRegistroActaField() {
+      const notaVal = document.getElementById('reg-nota')?.value || '';
+      const sel = document.getElementById('reg-estado-acta');
+      if (!sel) return;
+
+      if (isActaNotaSalida(notaVal)) {
+        sel.disabled = false;
+        if (sel.value === '-') sel.value = 'Pendiente';
+        sel.className = 'w-full rounded-xl border border-amber-400 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-800 focus:border-slateOps focus:outline-none';
+      } else {
+        sel.value = '-';
+        sel.disabled = true;
+        sel.className = 'w-full rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-2.5 text-sm font-semibold text-gray-500 cursor-not-allowed focus:border-slateOps focus:outline-none';
+      }
     }
 
     function syncTubingOrCanosField(descripcion) {
@@ -1957,6 +2069,7 @@
       const uniqueDestinos = [...new Set(despachos.map(d => d.destino.trim()).filter(Boolean))];
       destinosList.innerHTML = uniqueDestinos.map(dest => `<option value="${dest}">`).join('');
 
+      syncRegistroActaField();
       syncTubingOrCanosField(document.getElementById('reg-descripcion')?.value || '');
     }
 
@@ -2092,6 +2205,7 @@
       document.getElementById('reg-fecha').value = getTodayISO();
       document.getElementById('reg-responsable').value = currentResponsable;
       updateSemanaFromFecha();
+      syncRegistroActaField();
       handleMaterialSelect();
       clearMultiItems();
     }
@@ -2105,7 +2219,7 @@
       const rq = document.getElementById('reg-rq').value.trim();
       const destino = document.getElementById('reg-destino').value.trim();
       const notaSalida = document.getElementById('reg-nota').value.trim();
-      const estado = document.getElementById('reg-estado').value;
+      const estadoActa = normalizeEstadoActaValue(notaSalida, document.getElementById('reg-estado-acta')?.value);
       const observaciones = document.getElementById('reg-observaciones').value.trim();
 
       if (!fecha || !area || !responsable || !rq || !destino) {
@@ -2168,7 +2282,7 @@
           unidad: item.unidad,
           notaSalida,
           observaciones,
-          estado
+          estadoActa
         });
       });
 
@@ -2211,6 +2325,23 @@
           return matchFecha && matchDest && matchRq && matchArea;
         })
         .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id);
+    }
+
+    function handleInlineEstadoActaChange(id, newEstado) {
+      const idx = despachos.findIndex(d => d.id === id);
+      if (idx === -1) return;
+      const item = despachos[idx];
+      if (!isActaNotaSalida(item.notaSalida)) {
+        item.estadoActa = '-';
+      } else {
+        item.estadoActa = newEstado === 'Regularizado' ? 'Regularizado' : 'Pendiente';
+      }
+      saveAllToStorage();
+      if (selectedConsultaIds.size === 1 && selectedConsultaIds.has(id)) {
+        const editActaSel = document.getElementById('cons-edit-estado-acta');
+        if (editActaSel) editActaSel.value = item.estadoActa;
+      }
+      showToast(`Estado de acta actualizado a "${item.estadoActa}".`, 'success');
     }
 
     function toggleSelectConsultaItem(id) {
@@ -2266,6 +2397,23 @@
       }
     }
 
+    function syncConsultaEditActaField(preferredValue = null) {
+      const notaVal = document.getElementById('cons-edit-nota')?.value || '';
+      const sel = document.getElementById('cons-edit-estado-acta');
+      if (!sel) return;
+
+      if (isActaNotaSalida(notaVal)) {
+        sel.disabled = false;
+        const candidate = preferredValue || sel.value;
+        sel.value = candidate === 'Regularizado' ? 'Regularizado' : 'Pendiente';
+        sel.className = 'w-full rounded-xl border border-amber-400 bg-white px-3 py-2 text-sm font-semibold text-gray-800 focus:border-slateOps focus:outline-none';
+      } else {
+        sel.value = '-';
+        sel.disabled = true;
+        sel.className = 'w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-500 cursor-not-allowed focus:border-slateOps focus:outline-none';
+      }
+    }
+
     function syncConsultaEditUnidadesField(descripcion, existingUnidades = null) {
       const container = document.getElementById('cons-edit-unidades-container');
       const inputUnidades = document.getElementById('cons-edit-cantidad-unidades');
@@ -2313,6 +2461,7 @@
       document.getElementById('cons-edit-cantidad').value = item.cantidad;
       document.getElementById('cons-edit-nota').value = item.notaSalida || '';
       document.getElementById('cons-edit-obs').value = item.observaciones || '';
+      syncConsultaEditActaField(normalizeEstadoActaValue(item.notaSalida, item.estadoActa));
 
       const mat = maestroMateriales.find(m => m.codigo === item.codigo);
       const descActual = mat ? mat.descripcion : item.descripcion;
@@ -2413,6 +2562,7 @@
       const codigo = document.getElementById('cons-edit-codigo').value;
       const cantidad = parseFloat(document.getElementById('cons-edit-cantidad').value);
       const notaSalida = document.getElementById('cons-edit-nota').value.trim();
+      const estadoActa = normalizeEstadoActaValue(notaSalida, document.getElementById('cons-edit-estado-acta')?.value);
       const observaciones = document.getElementById('cons-edit-obs').value.trim();
 
       if (!fecha || !area || !responsable || !rq || !destino || !codigo || isNaN(cantidad) || cantidad <= 0) {
@@ -2448,6 +2598,7 @@
         cantidadUnidades,
         unidad,
         notaSalida,
+        estadoActa,
         observaciones
       };
 
@@ -2487,6 +2638,16 @@
 
       tbody.innerHTML = rows.map(d => {
         const isSelected = selectedConsultaIds.has(d.id);
+        const esActa = isActaNotaSalida(d.notaSalida);
+        const estadoActa = normalizeEstadoActaValue(d.notaSalida, d.estadoActa);
+
+        const estadoActaCell = esActa
+          ? `<select onchange="handleInlineEstadoActaChange(${d.id}, this.value)" aria-label="Estado de acta para ${d.codigo}" class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-semibold ${estadoActa === 'Regularizado' ? 'text-green-800 border-green-300 bg-green-50/50' : 'text-amber-900 border-amber-300 bg-amber-50/50'} focus:border-slateOps focus:outline-none cursor-pointer">
+               <option value="Pendiente" ${estadoActa === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+               <option value="Regularizado" ${estadoActa === 'Regularizado' ? 'selected' : ''}>Regularizado</option>
+             </select>`
+          : `<span class="text-xs font-semibold text-gray-400">-</span>`;
+
         return `
           <tr class="${isSelected ? 'bg-indYellow/20 ring-1 ring-inset ring-indYellow' : 'hover:bg-gray-50'} transition">
             <td class="py-3 px-4 text-center">
@@ -2500,18 +2661,14 @@
             </td>
             <td class="py-3 px-4 whitespace-nowrap font-semibold text-gray-700">${d.rq}</td>
             <td class="py-3 px-4 font-medium text-gray-800">${d.destino}</td>
-            <td class="py-3 px-4 whitespace-nowrap font-medium text-gray-800">${normalizeResponsableValue(d.responsable)}</td>
-            <td class="py-3 px-4 text-gray-600">${d.notaSalida || '-'}</td>
             <td class="py-3 px-4 whitespace-nowrap font-mono text-xs font-bold text-slateOps">${d.codigo}</td>
             <td class="py-3 px-4 text-gray-600">${d.descripcion}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-xs font-semibold text-gray-500">${d.unidad}</td>
             <td class="py-3 px-4 whitespace-nowrap text-right font-bold text-gray-800">${d.cantidad}</td>
             <td class="py-3 px-4 whitespace-nowrap text-right font-semibold text-slateOps">${d.cantidadUnidades != null ? d.cantidadUnidades : '-'}</td>
-            <td class="py-3 px-4 whitespace-nowrap text-xs font-semibold text-gray-500">${d.unidad}</td>
-            <td class="py-3 px-4 whitespace-nowrap text-center">
-              <button type="button" onclick="confirmDeleteSingleConsultaItem(${d.id})" class="px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition">
-                Eliminar
-              </button>
-            </td>
+            <td class="py-3 px-4 text-gray-600">${d.notaSalida || '-'}</td>
+            <td class="py-3 px-4 whitespace-nowrap font-medium text-gray-800">${normalizeResponsableValue(d.responsable)}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-center">${estadoActaCell}</td>
           </tr>
         `;
       }).join('');
@@ -2606,21 +2763,23 @@
       }
 
       const headers = [
-        'Fecha', 'Área', 'RQ', 'Destino', 'Responsable', 'Nota salida/otros',
-        'Código', 'Descripción', 'Cantidad despachada', 'Cantidad en unidades', 'Unidad de medida'
+        'Fecha', 'Área', 'RQ', 'Destino', 'Código', 'Descripción',
+        'Unidad de medida', 'Cantidad despachada', 'Cantidad en unidades',
+        'Nota salida/otros', 'Responsable', 'Estado de acta'
       ];
       const rowsData = rows.map(d => [
         d.fecha,
         d.area,
         d.rq,
         d.destino,
-        normalizeResponsableValue(d.responsable),
-        d.notaSalida || '',
         d.codigo,
         d.descripcion,
+        d.unidad,
         Number(d.cantidad) || 0,
         d.cantidadUnidades != null ? Number(d.cantidadUnidades) : '',
-        d.unidad
+        d.notaSalida || '',
+        normalizeResponsableValue(d.responsable),
+        normalizeEstadoActaValue(d.notaSalida, d.estadoActa)
       ]);
 
       exportStyledXlsx(`Despachos_${source}_${getTodayISO()}.xlsx`, headers, rowsData);
@@ -2714,9 +2873,25 @@
       showToast(`Estado de ${maestroMateriales[idx].codigo} actualizado.`, 'success');
     }
 
+    function handleMatSearchInput() {
+      matCurrentPage = 1;
+      renderMaestrosTables();
+    }
+
+    function handleMatPageSizeChange() {
+      matCurrentPage = 1;
+      renderMaestrosTables();
+    }
+
+    function changeMatPage(delta) {
+      matCurrentPage = Math.max(1, matCurrentPage + delta);
+      renderMaestrosTables();
+    }
+
     function clearMatCodigoSearch() {
       const input = document.getElementById('mat-search-codigo');
       if (input) input.value = '';
+      matCurrentPage = 1;
       renderMaestrosTables();
     }
 
@@ -2730,10 +2905,21 @@
     }
 
     function toggleSelectAllMaterials(checked) {
+      const matSearchVal = (document.getElementById('mat-search-codigo')?.value || '').trim().toLowerCase();
+      const filtered = maestroMateriales.filter(m =>
+        !matSearchVal || String(m.codigo || '').toLowerCase().includes(matSearchVal)
+      );
+      const pageSizeRaw = document.getElementById('mat-page-size')?.value || '100';
+      const pageSize = pageSizeRaw === 'ALL' ? filtered.length : Math.max(1, parseInt(pageSizeRaw, 10) || 100);
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      const safePage = Math.min(matCurrentPage, totalPages);
+      const start = (safePage - 1) * pageSize;
+      const pageRows = filtered.slice(start, start + pageSize);
+
       if (checked) {
-        maestroMateriales.forEach(m => selectedMaterialCodes.add(m.codigo));
+        pageRows.forEach(m => selectedMaterialCodes.add(m.codigo));
       } else {
-        maestroMateriales.forEach(m => selectedMaterialCodes.delete(m.codigo));
+        pageRows.forEach(m => selectedMaterialCodes.delete(m.codigo));
       }
       renderMaestrosTables();
     }
@@ -2863,6 +3049,7 @@
           }
 
           maestroMateriales = importedRows;
+          matCurrentPage = 1;
           const importedCount = importedRows.length;
 
           saveAllToStorage();
@@ -3037,25 +3224,48 @@
         .map((m, origIdx) => ({ m, origIdx }))
         .filter(({ m }) => !matSearchVal || String(m.codigo || '').toLowerCase().includes(matSearchVal));
 
+      const pageSizeRaw = document.getElementById('mat-page-size')?.value || '100';
+      const pageSize = pageSizeRaw === 'ALL'
+        ? Math.max(1, filteredMateriales.length)
+        : Math.max(1, parseInt(pageSizeRaw, 10) || 100);
+      const totalPages = Math.max(1, Math.ceil(filteredMateriales.length / pageSize));
+      if (matCurrentPage > totalPages) matCurrentPage = totalPages;
+      if (matCurrentPage < 1) matCurrentPage = 1;
+
+      const startIdx = (matCurrentPage - 1) * pageSize;
+      const endIdx = Math.min(startIdx + pageSize, filteredMateriales.length);
+      const paginatedMateriales = filteredMateriales.slice(startIdx, endIdx);
+
       const matSearchCount = document.getElementById('mat-search-count');
       if (matSearchCount) {
-        matSearchCount.textContent = matSearchVal
-          ? `Mostrando ${filteredMateriales.length} de ${maestroMateriales.length} material(es)`
-          : `Mostrando ${maestroMateriales.length} material(es)`;
+        if (filteredMateriales.length === 0) {
+          matSearchCount.textContent = `Mostrando 0 de ${maestroMateriales.length.toLocaleString('es-PE')} material(es)`;
+        } else {
+          matSearchCount.textContent = `Mostrando ${startIdx + 1}–${endIdx} de ${filteredMateriales.length.toLocaleString('es-PE')} material(es)`;
+        }
       }
+
+      const pageInfo = document.getElementById('mat-page-info');
+      const prevBtn = document.getElementById('mat-prev-page-btn');
+      const nextBtn = document.getElementById('mat-next-page-btn');
+      if (pageInfo) {
+        pageInfo.textContent = `Página ${matCurrentPage} de ${totalPages} (${filteredMateriales.length.toLocaleString('es-PE')} registros)`;
+      }
+      if (prevBtn) prevBtn.disabled = matCurrentPage <= 1 || filteredMateriales.length === 0;
+      if (nextBtn) nextBtn.disabled = matCurrentPage >= totalPages || filteredMateriales.length === 0;
 
       const matSelectAll = document.getElementById('mat-select-all');
       if (matSelectAll) {
-        matSelectAll.checked = filteredMateriales.length > 0 && filteredMateriales.every(({ m }) => selectedMaterialCodes.has(m.codigo));
+        matSelectAll.checked = paginatedMateriales.length > 0 && paginatedMateriales.every(({ m }) => selectedMaterialCodes.has(m.codigo));
       }
 
       const matTbody = document.getElementById('maestro-mat-tbody');
-      if (filteredMateriales.length === 0) {
+      if (paginatedMateriales.length === 0) {
         matTbody.innerHTML = matSearchVal
           ? '<tr><td colspan="7" class="py-6 text-center text-gray-400">No se encontraron materiales con ese código.</td></tr>'
           : '<tr><td colspan="7" class="py-6 text-center text-gray-400">No hay materiales registrados.</td></tr>';
       } else {
-        matTbody.innerHTML = filteredMateriales.map(({ m, origIdx: idx }) => {
+        matTbody.innerHTML = paginatedMateriales.map(({ m, origIdx: idx }) => {
           const isSel = selectedMaterialCodes.has(m.codigo);
           return `
             <tr class="${isSel ? 'bg-indYellow/20 ring-1 ring-inset ring-indYellow' : 'hover:bg-gray-50'} transition">
@@ -3140,6 +3350,7 @@
           selectedConsultaIds.clear();
           selectedMaterialCodes.clear();
           selectedAreaUids.clear();
+          matCurrentPage = 1;
           saveAllToStorage();
           showToast('Datos de ejemplo restaurados y enviados a Supabase.', 'success');
           switchView('dashboard');
