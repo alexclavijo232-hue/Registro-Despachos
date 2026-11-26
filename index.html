@@ -315,6 +315,7 @@
               <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
                 <th class="py-3 px-4 font-semibold">Fecha</th>
                 <th class="py-3 px-4 font-semibold">Área</th>
+                <th class="py-3 px-4 font-semibold">Responsable</th>
                 <th class="py-3 px-4 font-semibold">RQ</th>
                 <th class="py-3 px-4 font-semibold">Destino</th>
                 <th class="py-3 px-4 font-semibold">Código</th>
@@ -379,11 +380,19 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label for="reg-destino" class="block text-xs font-semibold text-gray-700 mb-1.5">Destino *</label>
               <input type="text" id="reg-destino" list="destinos-datalist" required placeholder="Ej. Batería Primavera / Pozo X-14" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm focus:border-slateOps focus:outline-none" />
               <datalist id="destinos-datalist"></datalist>
+            </div>
+
+            <div>
+              <label for="reg-responsable" class="block text-xs font-semibold text-gray-700 mb-1.5">Responsable *</label>
+              <select id="reg-responsable" required class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm bg-white focus:border-slateOps focus:outline-none">
+                <option value="Alex Clavijo Fernandez">Alex Clavijo Fernandez</option>
+                <option value="Jonathan Agurto">Jonathan Agurto</option>
+              </select>
             </div>
 
             <div>
@@ -429,7 +438,7 @@
                 onfocus="handleCodigoInput()"
                 onblur="handleCodigoBlur()"
                 onkeydown="handleCodigoKeydown(event)"
-                class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm font-mono uppercase bg-white focus:border-slateOps focus:outline-none"
+                class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm uppercase bg-white focus:border-slateOps focus:outline-none"
               />
               <div
                 id="codigo-suggestions-dropdown"
@@ -589,7 +598,7 @@
 
         <form id="form-cons-edit" onsubmit="handleSaveConsultaEdit(event)" class="space-y-4">
           <input type="hidden" id="cons-edit-id" />
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label for="cons-edit-fecha" class="block text-xs font-semibold text-gray-700 mb-1">Fecha *</label>
               <input type="date" id="cons-edit-fecha" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
@@ -597,6 +606,13 @@
             <div>
               <label for="cons-edit-area" class="block text-xs font-semibold text-gray-700 mb-1">Área *</label>
               <select id="cons-edit-area" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none"></select>
+            </div>
+            <div>
+              <label for="cons-edit-responsable" class="block text-xs font-semibold text-gray-700 mb-1">Responsable *</label>
+              <select id="cons-edit-responsable" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none">
+                <option value="Alex Clavijo Fernandez">Alex Clavijo Fernandez</option>
+                <option value="Jonathan Agurto">Jonathan Agurto</option>
+              </select>
             </div>
             <div>
               <label for="cons-edit-rq" class="block text-xs font-semibold text-gray-700 mb-1">RQ *</label>
@@ -714,6 +730,7 @@
                 <th class="py-3 px-4 font-semibold">Fecha</th>
                 <th class="py-3 px-4 font-semibold">Semana</th>
                 <th class="py-3 px-4 font-semibold">Área</th>
+                <th class="py-3 px-4 font-semibold">Responsable</th>
                 <th class="py-3 px-4 font-semibold">RQ</th>
                 <th class="py-3 px-4 font-semibold">Destino</th>
                 <th class="py-3 px-4 font-semibold">Código</th>
@@ -826,6 +843,31 @@
             </button>
           </div>
         </form>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="relative flex-1 max-w-md">
+            <label for="mat-search-codigo" class="sr-only">Buscar por código</label>
+            <input
+              type="text"
+              id="mat-search-codigo"
+              oninput="renderMaestrosTables()"
+              placeholder="Buscar por código (ej. MAT-001, 002)..."
+              class="w-full rounded-xl border border-gray-300 pl-9 pr-8 py-2 text-sm uppercase focus:border-slateOps focus:outline-none"
+            />
+            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <button
+              type="button"
+              onclick="clearMatCodigoSearch()"
+              title="Limpiar búsqueda"
+              class="text-gray-400 hover:text-gray-700 absolute right-2.5 top-2 text-xs font-bold px-1"
+            >
+              ✕
+            </button>
+          </div>
+          <span id="mat-search-count" class="text-xs font-semibold text-gray-500">Mostrando 0 materiales</span>
+        </div>
 
         <div id="mat-bulk-bar" class="hidden bg-slateOps text-white px-5 py-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="flex items-center gap-2.5">
@@ -967,6 +1009,11 @@
       anonKey: 'sb_publishable_WgJIrW_1tLPFx1bQLrB-vQ_XlDiI5KQ'
     };
 
+    const RESPONSABLES_LISTA = [
+      'Alex Clavijo Fernandez',
+      'Jonathan Agurto'
+    ];
+
     const supabaseClient = (typeof supabase !== 'undefined')
       ? supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey)
       : null;
@@ -1016,6 +1063,7 @@
         fecha: '2026-11-03',
         semana: 'Sem 45',
         area: 'Facilidades',
+        responsable: 'Alex Clavijo Fernandez',
         rq: 'RQ-2026-0381',
         destino: 'Batería Primavera',
         codigo: 'MAT-001',
@@ -1033,6 +1081,7 @@
         fecha: '2026-11-05',
         semana: 'Sem 45',
         area: 'Completación',
+        responsable: 'Jonathan Agurto',
         rq: 'RQ-2026-0388',
         destino: 'Pozo X-14',
         codigo: 'MAT-002',
@@ -1049,6 +1098,7 @@
         fecha: '2026-11-10',
         semana: 'Sem 46',
         area: 'Facilidades',
+        responsable: 'Alex Clavijo Fernandez',
         rq: 'RQ-2026-0394',
         destino: 'Estación Compresora Norte',
         codigo: 'MAT-005',
@@ -1065,6 +1115,7 @@
         fecha: '2026-11-12',
         semana: 'Sem 46',
         area: 'Completación',
+        responsable: 'Jonathan Agurto',
         rq: 'RQ-2026-0401',
         destino: 'Pozo X-14',
         codigo: 'MAT-003',
@@ -1081,6 +1132,7 @@
         fecha: '2026-11-17',
         semana: 'Sem 47',
         area: 'Facilidades',
+        responsable: 'Alex Clavijo Fernandez',
         rq: 'RQ-2026-0409',
         destino: 'Batería Primavera',
         codigo: 'MAT-008',
@@ -1097,6 +1149,7 @@
         fecha: '2026-11-19',
         semana: 'Sem 47',
         area: 'Completación',
+        responsable: 'Jonathan Agurto',
         rq: 'RQ-2026-0412',
         destino: 'Pozo Sur-08',
         codigo: 'MAT-007',
@@ -1119,6 +1172,11 @@
     let chartTopDestinos = null;
     let chartTendencia = null;
     let activeViewName = 'dashboard';
+
+    function normalizeResponsableValue(val, fallback = 'Alex Clavijo Fernandez') {
+      const clean = String(val || '').trim();
+      return clean || fallback;
+    }
 
     // =========================================================================
     // 2. SINCRONIZACIÓN CON SUPABASE (despachos, despacho_items, maestros)
@@ -1172,12 +1230,14 @@
 
           despachos.forEach(d => {
             const parentId = Number(d.despachoId || d.id);
+            const resp = normalizeResponsableValue(d.responsable);
             if (!despHeaderMap.has(parentId)) {
               despHeaderMap.set(parentId, {
                 id: parentId,
                 fecha: d.fecha,
                 semana: d.semana || getISOWeekString(d.fecha),
                 area: d.area,
+                responsable: resp,
                 rq: d.rq,
                 destino: d.destino,
                 nota_salida: d.notaSalida || '',
@@ -1189,6 +1249,7 @@
             itemRows.push({
               id: Number(d.id),
               despacho_id: parentId,
+              responsable: resp,
               codigo: d.codigo,
               descripcion: d.descripcion,
               cantidad: Number(d.cantidad) || 0,
@@ -1294,6 +1355,7 @@
               fecha: h.fecha || getTodayISO(),
               semana: h.semana || getISOWeekString(h.fecha || getTodayISO()),
               area: h.area || '',
+              responsable: normalizeResponsableValue(item.responsable || h.responsable),
               rq: h.rq || '',
               destino: h.destino || '',
               codigo: item.codigo,
@@ -1349,6 +1411,7 @@
         despachos = storedDesp ? JSON.parse(storedDesp) : JSON.parse(JSON.stringify(DEFAULT_DESPACHOS));
         despachos.forEach(d => {
           if (!d.despachoId) d.despachoId = d.id;
+          d.responsable = normalizeResponsableValue(d.responsable);
         });
       } catch (err) {
         console.error('Error cargando localStorage:', err);
@@ -1628,7 +1691,8 @@
           const matchDest = !destFilter || d.destino.toLowerCase() === destFilter;
           const matchQuery = !searchText ||
             d.destino.toLowerCase().includes(searchText) ||
-            d.rq.toLowerCase().includes(searchText);
+            d.rq.toLowerCase().includes(searchText) ||
+            normalizeResponsableValue(d.responsable).toLowerCase().includes(searchText);
           return matchDest && matchQuery;
         })
         .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id);
@@ -1640,7 +1704,7 @@
       const footer = document.getElementById('dash-table-footer');
 
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-gray-400 text-sm">No se encontraron despachos con los filtros seleccionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="py-8 text-center text-gray-400 text-sm">No se encontraron despachos con los filtros seleccionados.</td></tr>';
       } else {
         tbody.innerHTML = rows.map(d => `
           <tr class="hover:bg-gray-50 transition">
@@ -1650,6 +1714,7 @@
                 ${d.area}
               </span>
             </td>
+            <td class="py-3 px-4 whitespace-nowrap font-medium text-gray-800">${normalizeResponsableValue(d.responsable)}</td>
             <td class="py-3 px-4 whitespace-nowrap font-semibold text-gray-700">${d.rq}</td>
             <td class="py-3 px-4 font-medium text-gray-800">${d.destino}</td>
             <td class="py-3 px-4 whitespace-nowrap font-mono text-xs font-bold text-slateOps">${d.codigo}</td>
@@ -1677,13 +1742,13 @@
       return String(str || '')
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[̀-ͯ]/g, '')
         .trim();
     }
 
     function isTubingOrCanosDescription(descripcion) {
       const norm = normalizeSearchText(descripcion);
-      return /\btubing\b/.test(norm) || /\bcano[s]?\b/.test(norm);
+      return /tubing/.test(norm) || /cano[s]?/.test(norm);
     }
 
     function syncTubingOrCanosField(descripcion) {
@@ -1779,7 +1844,7 @@
         return `
           <button
             type="button"
-            onmousedown="selectSuggestedMaterial('${mat.codigo.replace(/'/g, "\\'")}')"
+            onmousedown="selectSuggestedMaterial('${mat.codigo.replace(/'/g, "\'")}')"
             class="w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between gap-2 transition ${isHighlighted ? 'bg-indYellow/20' : 'hover:bg-gray-50'}"
           >
             <div class="min-w-0">
@@ -1871,6 +1936,14 @@
         fechaInput.value = getTodayISO();
       }
       updateSemanaFromFecha();
+
+      const respSelect = document.getElementById('reg-responsable');
+      if (respSelect) {
+        const prevVal = respSelect.value || RESPONSABLES_LISTA[0];
+        const optionsList = [...new Set([...RESPONSABLES_LISTA, prevVal])].filter(Boolean);
+        respSelect.innerHTML = optionsList.map(r => `<option value="${r}">${r}</option>`).join('');
+        respSelect.value = optionsList.includes(prevVal) ? prevVal : RESPONSABLES_LISTA[0];
+      }
 
       const areaSelect = document.getElementById('reg-area');
       const activeAreas = maestroAreas.filter(a => a.activo !== false);
@@ -2013,8 +2086,10 @@
     }
 
     function resetRegistroForm() {
+      const currentResponsable = document.getElementById('reg-responsable')?.value || RESPONSABLES_LISTA[0];
       document.getElementById('form-registro-despacho').reset();
       document.getElementById('reg-fecha').value = getTodayISO();
+      document.getElementById('reg-responsable').value = currentResponsable;
       updateSemanaFromFecha();
       handleMaterialSelect();
       clearMultiItems();
@@ -2025,13 +2100,14 @@
       const fecha = document.getElementById('reg-fecha').value;
       const semana = document.getElementById('reg-semana').value || getISOWeekString(fecha);
       const area = document.getElementById('reg-area').value;
+      const responsable = normalizeResponsableValue(document.getElementById('reg-responsable').value);
       const rq = document.getElementById('reg-rq').value.trim();
       const destino = document.getElementById('reg-destino').value.trim();
       const notaSalida = document.getElementById('reg-nota').value.trim();
       const estado = document.getElementById('reg-estado').value;
       const observaciones = document.getElementById('reg-observaciones').value.trim();
 
-      if (!fecha || !area || !rq || !destino) {
+      if (!fecha || !area || !responsable || !rq || !destino) {
         showToast('Completa los campos obligatorios de cabecera.', 'warning');
         return;
       }
@@ -2081,6 +2157,7 @@
           fecha,
           semana,
           area,
+          responsable,
           rq,
           destino,
           codigo: item.codigo,
@@ -2215,6 +2292,12 @@
       areaSel.innerHTML = uniqueAreas.map(a => `<option value="${a}">${a}</option>`).join('');
       areaSel.value = item.area;
 
+      const respSel = document.getElementById('cons-edit-responsable');
+      const currentResp = normalizeResponsableValue(item.responsable);
+      const allResp = [...new Set([...RESPONSABLES_LISTA, currentResp])];
+      respSel.innerHTML = allResp.map(r => `<option value="${r}">${r}</option>`).join('');
+      respSel.value = currentResp;
+
       document.getElementById('cons-edit-rq').value = item.rq;
       document.getElementById('cons-edit-destino').value = item.destino;
 
@@ -2323,6 +2406,7 @@
       const fecha = document.getElementById('cons-edit-fecha').value;
       const semana = getISOWeekString(fecha) || despachos[idx].semana;
       const area = document.getElementById('cons-edit-area').value;
+      const responsable = normalizeResponsableValue(document.getElementById('cons-edit-responsable').value);
       const rq = document.getElementById('cons-edit-rq').value.trim();
       const destino = document.getElementById('cons-edit-destino').value.trim();
       const codigo = document.getElementById('cons-edit-codigo').value;
@@ -2330,7 +2414,7 @@
       const notaSalida = document.getElementById('cons-edit-nota').value.trim();
       const observaciones = document.getElementById('cons-edit-obs').value.trim();
 
-      if (!fecha || !area || !rq || !destino || !codigo || isNaN(cantidad) || cantidad <= 0) {
+      if (!fecha || !area || !responsable || !rq || !destino || !codigo || isNaN(cantidad) || cantidad <= 0) {
         showToast('Completa todos los campos obligatorios con valores válidos.', 'warning');
         return;
       }
@@ -2354,6 +2438,7 @@
         fecha,
         semana,
         area,
+        responsable,
         rq,
         destino,
         codigo,
@@ -2395,7 +2480,7 @@
       }
 
       if (rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" class="py-8 text-center text-gray-400 text-sm">No hay despachos que coincidan con el criterio de búsqueda.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="15" class="py-8 text-center text-gray-400 text-sm">No hay despachos que coincidan con el criterio de búsqueda.</td></tr>';
         return;
       }
 
@@ -2413,6 +2498,7 @@
                 ${d.area}
               </span>
             </td>
+            <td class="py-3 px-4 whitespace-nowrap font-medium text-gray-800">${normalizeResponsableValue(d.responsable)}</td>
             <td class="py-3 px-4 whitespace-nowrap font-semibold text-gray-700">${d.rq}</td>
             <td class="py-3 px-4 font-medium text-gray-800">${d.destino}</td>
             <td class="py-3 px-4 whitespace-nowrap font-mono text-xs font-bold text-slateOps">${d.codigo}</td>
@@ -2521,12 +2607,13 @@
       }
 
       const headers = [
-        'Fecha', 'Área', 'RQ', 'Destino', 'Código',
+        'Fecha', 'Área', 'Responsable', 'RQ', 'Destino', 'Código',
         'Descripción', 'Cantidad despachada', 'Cantidad en unidades', 'Unidad de medida', 'Nota salida/otros'
       ];
       const rowsData = rows.map(d => [
         d.fecha,
         d.area,
+        normalizeResponsableValue(d.responsable),
         d.rq,
         d.destino,
         d.codigo,
@@ -2626,6 +2713,12 @@
       saveAllToStorage();
       renderMaestrosTables();
       showToast(`Estado de ${maestroMateriales[idx].codigo} actualizado.`, 'success');
+    }
+
+    function clearMatCodigoSearch() {
+      const input = document.getElementById('mat-search-codigo');
+      if (input) input.value = '';
+      renderMaestrosTables();
     }
 
     function toggleSelectMaterial(codigo) {
@@ -2739,41 +2832,39 @@
             return;
           }
 
-          let importedCount = 0;
+          const importedRows = [];
           for (let i = 1; i < aoa.length; i++) {
             const row = aoa[i];
-            const codigo = String(row[0] ?? '').trim().toUpperCase();
+            const hasAnyValue = row.some(cell => String(cell ?? '').trim() !== '');
+            if (!hasAnyValue) continue;
+
+            const codigo = String(row[0] ?? '').trim();
             const descripcion = String(row[1] ?? '').trim();
-            const unidad = String(row[2] ?? 'UND').trim().toUpperCase() || 'UND';
-            const stockRaw = parseFloat(row[3]);
+            const unidad = String(row[2] ?? '').trim();
+            const stockRaw = parseFloat(String(row[3] ?? '').replace(',', '.'));
             const stock = isNaN(stockRaw) ? 0 : stockRaw;
 
-            if (!codigo && !descripcion) continue;
             if (!codigo || !descripcion) {
               showToast('Archivo no cumple con el formato', 'error');
               return;
             }
 
-            const existingIdx = maestroMateriales.findIndex(m => m.codigo.toUpperCase() === codigo);
-            if (existingIdx !== -1) {
-              maestroMateriales[existingIdx] = {
-                ...maestroMateriales[existingIdx],
-                codigo,
-                descripcion,
-                unidad,
-                stock
-              };
-            } else {
-              maestroMateriales.push({
-                codigo,
-                descripcion,
-                unidad,
-                stock,
-                activo: true
-              });
-            }
-            importedCount++;
+            importedRows.push({
+              codigo,
+              descripcion,
+              unidad,
+              stock,
+              activo: true
+            });
           }
+
+          if (importedRows.length === 0) {
+            showToast('Archivo no cumple con el formato', 'error');
+            return;
+          }
+
+          maestroMateriales = importedRows;
+          const importedCount = importedRows.length;
 
           if (importedCount === 0) {
             showToast('Archivo no cumple con el formato', 'error');
@@ -2947,21 +3038,35 @@
         }
       }
 
+      const matSearchVal = (document.getElementById('mat-search-codigo')?.value || '').trim().toLowerCase();
+      const filteredMateriales = maestroMateriales
+        .map((m, origIdx) => ({ m, origIdx }))
+        .filter(({ m }) => !matSearchVal || String(m.codigo || '').toLowerCase().includes(matSearchVal));
+
+      const matSearchCount = document.getElementById('mat-search-count');
+      if (matSearchCount) {
+        matSearchCount.textContent = matSearchVal
+          ? `Mostrando ${filteredMateriales.length} de ${maestroMateriales.length} material(es)`
+          : `Mostrando ${maestroMateriales.length} material(es)`;
+      }
+
       const matSelectAll = document.getElementById('mat-select-all');
       if (matSelectAll) {
-        matSelectAll.checked = maestroMateriales.length > 0 && maestroMateriales.every(m => selectedMaterialCodes.has(m.codigo));
+        matSelectAll.checked = filteredMateriales.length > 0 && filteredMateriales.every(({ m }) => selectedMaterialCodes.has(m.codigo));
       }
 
       const matTbody = document.getElementById('maestro-mat-tbody');
-      if (maestroMateriales.length === 0) {
-        matTbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-gray-400">No hay materiales registrados.</td></tr>';
+      if (filteredMateriales.length === 0) {
+        matTbody.innerHTML = matSearchVal
+          ? '<tr><td colspan="7" class="py-6 text-center text-gray-400">No se encontraron materiales con ese código.</td></tr>'
+          : '<tr><td colspan="7" class="py-6 text-center text-gray-400">No hay materiales registrados.</td></tr>';
       } else {
-        matTbody.innerHTML = maestroMateriales.map((m, idx) => {
+        matTbody.innerHTML = filteredMateriales.map(({ m, origIdx: idx }) => {
           const isSel = selectedMaterialCodes.has(m.codigo);
           return `
             <tr class="${isSel ? 'bg-indYellow/20 ring-1 ring-inset ring-indYellow' : 'hover:bg-gray-50'} transition">
               <td class="py-3 px-4 text-center">
-                <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleSelectMaterial('${m.codigo.replace(/'/g, "\\'")}')" aria-label="Seleccionar material ${m.codigo}" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
+                <input type="checkbox" ${isSel ? 'checked' : ''} onchange="toggleSelectMaterial('${m.codigo.replace(/'/g, "\'")}')" aria-label="Seleccionar material ${m.codigo}" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
               </td>
               <td class="py-3 px-4 font-mono text-xs font-bold text-slateOps">${m.codigo}</td>
               <td class="py-3 px-4 font-medium text-gray-800">${m.descripcion}</td>
@@ -2974,7 +3079,7 @@
               </td>
               <td class="py-3 px-4 text-center whitespace-nowrap space-x-2">
                 <button type="button" onclick="startEditMaterial(${idx})" class="text-xs font-semibold text-slateOps hover:underline">Editar</button>
-                <button type="button" onclick="confirmDeleteSingleMaterial('${m.codigo.replace(/'/g, "\\'")}')" class="px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition">Eliminar</button>
+                <button type="button" onclick="confirmDeleteSingleMaterial('${m.codigo.replace(/'/g, "\'")}')" class="px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition">Eliminar</button>
               </td>
             </tr>
           `;
