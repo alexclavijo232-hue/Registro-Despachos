@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema de Gestión de Despachos v4.7 (Supabase)</title>
+  <title>Sistema de Gestión de Despachos v4.8 (Supabase)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js para gráficos de indicadores -->
@@ -156,7 +156,7 @@
           <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
-          <span>Consulta por Destino / RQ</span>
+          <span>Consultar</span>
         </button>
 
         <button onclick="switchView('maestros')" data-nav="maestros" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium text-gray-200 hover:bg-slateDark hover:text-white transition text-left">
@@ -542,15 +542,15 @@
     </section>
 
     <!-- =================================================================== -->
-    <!-- VISTA 3: CONSULTA POR DESTINO / RQ                                  -->
+    <!-- VISTA 3: CONSULTAR (2 opciones: Destino/RQ y Stock Perforación)     -->
     <!-- =================================================================== -->
     <section id="view-consulta" class="view-section hidden space-y-6">
       <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Consulta Avanzada por Destino / RQ</h2>
-          <p class="text-sm text-gray-500">Visualiza el historial completo de despachos asociados a un destino, requerimiento o área</p>
+          <h2 class="text-xl sm:text-2xl font-bold text-gray-800">Consultar</h2>
+          <p class="text-sm text-gray-500">Consulta despachos por Destino / RQ o controla el stock de Perforación</p>
         </div>
-        <button onclick="exportFilteredCSV('consulta')" class="px-4 py-2.5 rounded-xl bg-slateOps text-white text-sm font-semibold hover:bg-slateDark transition flex items-center justify-center gap-2 shadow-sm">
+        <button id="cons-export-btn" onclick="handleExportConsultar()" class="px-4 py-2.5 rounded-xl bg-slateOps text-white text-sm font-semibold hover:bg-slateDark transition flex items-center justify-center gap-2 shadow-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
           </svg>
@@ -558,196 +558,319 @@
         </button>
       </div>
 
-      <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div>
-          <label for="cons-select-fecha" class="block text-xs font-semibold text-gray-600 mb-1.5">Seleccionar Fecha</label>
-          <input type="date" id="cons-select-fecha" onchange="renderConsultaView()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none" />
+      <!-- 2 Opciones dentro de Consultar -->
+      <div class="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
+        <button type="button" onclick="switchConsultaTab('destino-rq')" id="cons-tab-destino-rq" class="px-4 py-2 rounded-xl text-sm font-semibold bg-slateOps text-white transition">
+          1. Consulta por Destino/RQ
+        </button>
+        <button type="button" onclick="switchConsultaTab('stock-perforacion')" id="cons-tab-stock-perforacion" class="px-4 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 hover:bg-gray-100 transition">
+          2. Consultar Stock Perforacion
+        </button>
+      </div>
+
+      <!-- SUB-OPCIÓN 1: CONSULTA POR DESTINO / RQ -->
+      <div id="consulta-panel-destino-rq" class="space-y-6">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label for="cons-select-fecha" class="block text-xs font-semibold text-gray-600 mb-1.5">Seleccionar Fecha</label>
+            <input type="date" id="cons-select-fecha" onchange="renderConsultaView()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none" />
+          </div>
+
+          <div>
+            <label for="cons-search-destino" class="block text-xs font-semibold text-gray-600 mb-1.5">Buscar Texto en Destino</label>
+            <input type="text" id="cons-search-destino" oninput="renderConsultaView()" placeholder="Ej. Batería, Pozo..." class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+          </div>
+
+          <div>
+            <label for="cons-search-rq" class="block text-xs font-semibold text-gray-600 mb-1.5">Buscar por RQ</label>
+            <input type="text" id="cons-search-rq" oninput="renderConsultaView()" placeholder="Ej. RQ-2026..." class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+          </div>
+
+          <div>
+            <label for="cons-filter-area" class="block text-xs font-semibold text-gray-600 mb-1.5">Filtrar por Área</label>
+            <select id="cons-filter-area" onchange="renderConsultaView()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none">
+              <option value="">Todas las Áreas</option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label for="cons-search-destino" class="block text-xs font-semibold text-gray-600 mb-1.5">Buscar Texto en Destino</label>
-          <input type="text" id="cons-search-destino" oninput="renderConsultaView()" placeholder="Ej. Batería, Pozo..." class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+        <div id="cons-edit-panel" class="hidden bg-white p-5 rounded-2xl shadow-sm border-2 border-indYellow space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indYellow"></span>
+              <h3 class="text-sm font-bold text-slateOps">Editando Ítem Seleccionado</h3>
+            </div>
+            <button type="button" onclick="cancelConsultaEdit()" class="text-xs font-semibold text-gray-500 hover:text-gray-800 hover:underline self-start sm:self-auto">
+              Cancelar selección
+            </button>
+          </div>
+
+          <form id="form-cons-edit" onsubmit="handleSaveConsultaEdit(event)" class="space-y-4">
+            <input type="hidden" id="cons-edit-id" />
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div>
+                <label for="cons-edit-fecha" class="block text-xs font-semibold text-gray-700 mb-1">Fecha *</label>
+                <input type="date" id="cons-edit-fecha" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              </div>
+              <div>
+                <label for="cons-edit-area" class="block text-xs font-semibold text-gray-700 mb-1">Área *</label>
+                <select id="cons-edit-area" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none"></select>
+              </div>
+              <div>
+                <label for="cons-edit-responsable" class="block text-xs font-semibold text-gray-700 mb-1">Responsable *</label>
+                <select id="cons-edit-responsable" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none">
+                  <option value="Alex Clavijo Fernandez">Alex Clavijo Fernandez</option>
+                  <option value="Jonathan Agurto">Jonathan Agurto</option>
+                </select>
+              </div>
+              <div>
+                <label for="cons-edit-rq" class="block text-xs font-semibold text-gray-700 mb-1">RQ *</label>
+                <input type="text" id="cons-edit-rq" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              </div>
+              <div>
+                <label for="cons-edit-destino" class="block text-xs font-semibold text-gray-700 mb-1">Destino *</label>
+                <input type="text" id="cons-edit-destino" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div>
+                <label for="cons-edit-codigo" class="block text-xs font-semibold text-gray-700 mb-1">Código Material *</label>
+                <select id="cons-edit-codigo" required onchange="handleConsultaEditMaterialChange()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none"></select>
+              </div>
+              <div>
+                <label for="cons-edit-cantidad" class="block text-xs font-semibold text-gray-700 mb-1">Cantidad Despachada *</label>
+                <input type="number" id="cons-edit-cantidad" step="any" min="0.01" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-slateOps focus:outline-none" />
+              </div>
+              <div>
+                <label for="cons-edit-nota" class="block text-xs font-semibold text-gray-700 mb-1">Nota salida/otros</label>
+                <input type="text" id="cons-edit-nota" oninput="syncConsultaEditActaField()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              </div>
+              <div>
+                <label for="cons-edit-estado-acta" class="block text-xs font-semibold text-gray-700 mb-1">Estado de Acta</label>
+                <select id="cons-edit-estado-acta" disabled class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-500 cursor-not-allowed focus:border-slateOps focus:outline-none">
+                  <option value="-">-</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="Regularizado">Regularizado</option>
+                </select>
+              </div>
+              <div>
+                <label for="cons-edit-obs" class="block text-xs font-semibold text-gray-700 mb-1">Observaciones</label>
+                <input type="text" id="cons-edit-obs" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              </div>
+            </div>
+
+            <div id="cons-edit-unidades-container" class="hidden p-3.5 rounded-xl bg-amber-50/80 border border-indYellow">
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                <div class="sm:col-span-6">
+                  <label for="cons-edit-cantidad-unidades" class="block text-xs font-bold text-slateOps">
+                    Cantidad en unidades (Tubing / Caños) *
+                  </label>
+                  <p class="text-[11px] text-gray-600">
+                    Habilitado porque la descripción del material corresponde a Tubing o Caños.
+                  </p>
+                </div>
+                <div class="sm:col-span-3">
+                  <input type="number" id="cons-edit-cantidad-unidades" step="1" min="1" placeholder="N° de unidades" class="w-full rounded-xl border border-amber-400 bg-white px-3 py-2 text-sm font-bold text-slateOps focus:border-slateOps focus:outline-none" />
+                </div>
+                <div class="sm:col-span-3">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-indYellow/35 text-amber-950 text-xs font-semibold">
+                    Detalle Tubing / Caños
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-2.5 pt-1">
+              <button type="button" onclick="cancelConsultaEdit()" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition">
+                Cancelar
+              </button>
+              <button type="submit" class="px-5 py-2 rounded-xl bg-indYellow text-slateDark text-xs font-bold hover:brightness-95 transition shadow-sm">
+                Guardar Cambios
+              </button>
+            </div>
+          </form>
         </div>
 
-        <div>
-          <label for="cons-search-rq" class="block text-xs font-semibold text-gray-600 mb-1.5">Buscar por RQ</label>
-          <input type="text" id="cons-search-rq" oninput="renderConsultaView()" placeholder="Ej. RQ-2026..." class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+        <div id="cons-bulk-bar" class="hidden bg-slateOps text-white px-5 py-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2.5 py-0.5 rounded-full bg-indYellow text-slateDark text-xs font-extrabold" id="cons-selected-count">0</span>
+            <span class="text-sm font-medium">ítem(s) seleccionado(s) en la tabla</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="button" onclick="clearAllConsultaSelections()" class="px-3.5 py-1.5 rounded-xl bg-slateDark text-gray-200 hover:text-white text-xs font-semibold transition">
+              Deseleccionar todo
+            </button>
+            <button type="button" onclick="confirmDeleteSelectedConsultaItems()" class="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              <span id="cons-delete-btn-label">Eliminar Seleccionados</span>
+            </button>
+          </div>
         </div>
 
-        <div>
-          <label for="cons-filter-area" class="block text-xs font-semibold text-gray-600 mb-1.5">Filtrar por Área</label>
-          <select id="cons-filter-area" onchange="renderConsultaView()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none">
-            <option value="">Todas las Áreas</option>
-          </select>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase">Registros Encontrados</p>
+              <p id="cons-kpi-count" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Despachos</span>
+          </div>
+
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase">Cantidad Total Acumulada</p>
+              <p id="cons-kpi-qty" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-indLime/20 text-green-800 text-xs font-semibold">Volumen</span>
+          </div>
+
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase">RQs Distintos</p>
+              <p id="cons-kpi-rqs" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-indYellow/25 text-amber-900 text-xs font-semibold">Requerimientos</span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                  <th class="py-3 px-4 font-semibold text-center w-10">
+                    <input type="checkbox" id="cons-select-all" onchange="toggleSelectAllConsultaItems(this.checked)" title="Seleccionar todos los visibles" aria-label="Seleccionar todos los ítems visibles" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
+                  </th>
+                  <th class="py-3 px-4 font-semibold">Fecha</th>
+                  <th class="py-3 px-4 font-semibold">Área</th>
+                  <th class="py-3 px-4 font-semibold">RQ</th>
+                  <th class="py-3 px-4 font-semibold">Destino</th>
+                  <th class="py-3 px-4 font-semibold">Código</th>
+                  <th class="py-3 px-4 font-semibold">Descripción</th>
+                  <th class="py-3 px-4 font-semibold">Unidad de medida</th>
+                  <th class="py-3 px-4 font-semibold text-right">Cantidad despachada</th>
+                  <th class="py-3 px-4 font-semibold text-right">Cantidad en unidades</th>
+                  <th class="py-3 px-4 font-semibold">Nota salida/otros</th>
+                  <th class="py-3 px-4 font-semibold">Responsable</th>
+                  <th class="py-3 px-4 font-semibold text-center">Estado de acta</th>
+                </tr>
+              </thead>
+              <tbody id="cons-table-body" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div id="cons-edit-panel" class="hidden bg-white p-5 rounded-2xl shadow-sm border-2 border-indYellow space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-3">
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-indYellow"></span>
-            <h3 class="text-sm font-bold text-slateOps">Editando Ítem Seleccionado</h3>
-          </div>
-          <button type="button" onclick="cancelConsultaEdit()" class="text-xs font-semibold text-gray-500 hover:text-gray-800 hover:underline self-start sm:self-auto">
-            Cancelar selección
-          </button>
-        </div>
-
-        <form id="form-cons-edit" onsubmit="handleSaveConsultaEdit(event)" class="space-y-4">
-          <input type="hidden" id="cons-edit-id" />
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <!-- SUB-OPCIÓN 2: CONSULTAR STOCK PERFORACION -->
+      <div id="consulta-panel-stock-perforacion" class="hidden space-y-6">
+        <form id="form-stock-perforacion" onsubmit="handleAddStockPerforacion(event)" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-3">
             <div>
-              <label for="cons-edit-fecha" class="block text-xs font-semibold text-gray-700 mb-1">Fecha *</label>
-              <input type="date" id="cons-edit-fecha" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+              <h3 class="text-base font-bold text-gray-800">Agregar Código y Digitar Stock Inicial</h3>
+              <p class="text-xs text-gray-500">Las salidas se jalan automáticamente desde Consulta por Destino/RQ (usando Cantidad en unidades cuando sea Tubing o Caños).</p>
             </div>
-            <div>
-              <label for="cons-edit-area" class="block text-xs font-semibold text-gray-700 mb-1">Área *</label>
-              <select id="cons-edit-area" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none"></select>
-            </div>
-            <div>
-              <label for="cons-edit-responsable" class="block text-xs font-semibold text-gray-700 mb-1">Responsable *</label>
-              <select id="cons-edit-responsable" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none">
-                <option value="Alex Clavijo Fernandez">Alex Clavijo Fernandez</option>
-                <option value="Jonathan Agurto">Jonathan Agurto</option>
-              </select>
-            </div>
-            <div>
-              <label for="cons-edit-rq" class="block text-xs font-semibold text-gray-700 mb-1">RQ *</label>
-              <input type="text" id="cons-edit-rq" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
-            </div>
-            <div>
-              <label for="cons-edit-destino" class="block text-xs font-semibold text-gray-700 mb-1">Destino *</label>
-              <input type="text" id="cons-edit-destino" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
-            </div>
+            <span class="text-xs font-semibold text-slateOps bg-indYellow/30 px-3 py-1 rounded-lg">
+              Stock actual = Stock inicial - Salidas
+            </span>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div>
-              <label for="cons-edit-codigo" class="block text-xs font-semibold text-gray-700 mb-1">Código Material *</label>
-              <select id="cons-edit-codigo" required onchange="handleConsultaEditMaterialChange()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm bg-white focus:border-slateOps focus:outline-none"></select>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
+            <div class="sm:col-span-4 relative">
+              <label for="perf-codigo" class="block text-xs font-semibold text-gray-700 mb-1.5">Código *</label>
+              <input
+                type="text"
+                id="perf-codigo"
+                autocomplete="off"
+                required
+                placeholder="Digita código o descripción"
+                oninput="handlePerfCodigoInput()"
+                onfocus="handlePerfCodigoInput()"
+                onblur="handlePerfCodigoBlur()"
+                onkeydown="handlePerfCodigoKeydown(event)"
+                class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm uppercase bg-white focus:border-slateOps focus:outline-none"
+              />
+              <div
+                id="perf-codigo-dropdown"
+                class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-300 rounded-xl shadow-xl z-30 max-h-60 overflow-y-auto divide-y divide-gray-100"
+              ></div>
             </div>
-            <div>
-              <label for="cons-edit-cantidad" class="block text-xs font-semibold text-gray-700 mb-1">Cantidad Despachada *</label>
-              <input type="number" id="cons-edit-cantidad" step="any" min="0.01" required class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-slateOps focus:outline-none" />
+
+            <div class="sm:col-span-4">
+              <label for="perf-descripcion" class="block text-xs font-semibold text-gray-700 mb-1.5">Descripción</label>
+              <input type="text" id="perf-descripcion" readonly placeholder="Se completa al elegir código" class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-2.5 text-sm text-gray-700 cursor-not-allowed" />
             </div>
-            <div>
-              <label for="cons-edit-nota" class="block text-xs font-semibold text-gray-700 mb-1">Nota salida/otros</label>
-              <input type="text" id="cons-edit-nota" oninput="syncConsultaEditActaField()" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+
+            <div class="sm:col-span-2">
+              <label for="perf-unidad" class="block text-xs font-semibold text-gray-700 mb-1.5">Unidad de medida</label>
+              <input type="text" id="perf-unidad" readonly placeholder="UND / M" class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-2.5 text-sm font-semibold text-center text-gray-700 cursor-not-allowed" />
             </div>
-            <div>
-              <label for="cons-edit-estado-acta" class="block text-xs font-semibold text-gray-700 mb-1">Estado de Acta</label>
-              <select id="cons-edit-estado-acta" disabled class="w-full rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-500 cursor-not-allowed focus:border-slateOps focus:outline-none">
-                <option value="-">-</option>
-                <option value="Pendiente">Pendiente</option>
-                <option value="Regularizado">Regularizado</option>
-              </select>
-            </div>
-            <div>
-              <label for="cons-edit-obs" class="block text-xs font-semibold text-gray-700 mb-1">Observaciones</label>
-              <input type="text" id="cons-edit-obs" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:border-slateOps focus:outline-none" />
+
+            <div class="sm:col-span-2">
+              <label for="perf-stock-inicial" class="block text-xs font-semibold text-gray-700 mb-1.5">Stock inicial *</label>
+              <input type="number" id="perf-stock-inicial" step="any" min="0" required placeholder="0" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm font-bold focus:border-slateOps focus:outline-none" />
             </div>
           </div>
 
-          <div id="cons-edit-unidades-container" class="hidden p-3.5 rounded-xl bg-amber-50/80 border border-indYellow">
-            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-              <div class="sm:col-span-6">
-                <label for="cons-edit-cantidad-unidades" class="block text-xs font-bold text-slateOps">
-                  Cantidad en unidades (Tubing / Caños) *
-                </label>
-                <p class="text-[11px] text-gray-600">
-                  Habilitado porque la descripción del material corresponde a Tubing o Caños.
-                </p>
-              </div>
-              <div class="sm:col-span-3">
-                <input type="number" id="cons-edit-cantidad-unidades" step="1" min="1" placeholder="N° de unidades" class="w-full rounded-xl border border-amber-400 bg-white px-3 py-2 text-sm font-bold text-slateOps focus:border-slateOps focus:outline-none" />
-              </div>
-              <div class="sm:col-span-3">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-lg bg-indYellow/35 text-amber-950 text-xs font-semibold">
-                  Detalle Tubing / Caños
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-2.5 pt-1">
-            <button type="button" onclick="cancelConsultaEdit()" class="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition">
-              Cancelar
-            </button>
-            <button type="submit" class="px-5 py-2 rounded-xl bg-indYellow text-slateDark text-xs font-bold hover:brightness-95 transition shadow-sm">
-              Guardar Cambios
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <p class="text-xs text-gray-500">
+              Si agregas un código ya registrado, se actualizará su <strong>Stock inicial</strong> y se recalculará su <strong>Stock actual</strong>.
+            </p>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-indLime text-slateDark font-bold text-sm hover:brightness-95 transition shadow-sm flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <span>Agregar a Stock Perforación</span>
             </button>
           </div>
         </form>
-      </div>
 
-      <div id="cons-bulk-bar" class="hidden bg-slateOps text-white px-5 py-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div class="flex items-center gap-2.5">
-          <span class="px-2.5 py-0.5 rounded-full bg-indYellow text-slateDark text-xs font-extrabold" id="cons-selected-count">0</span>
-          <span class="text-sm font-medium">ítem(s) seleccionado(s) en la tabla</span>
-        </div>
-        <div class="flex flex-wrap items-center gap-2.5">
-          <button type="button" onclick="clearAllConsultaSelections()" class="px-3.5 py-1.5 rounded-xl bg-slateDark text-gray-200 hover:text-white text-xs font-semibold transition">
-            Deseleccionar todo
-          </button>
-          <button type="button" onclick="confirmDeleteSelectedConsultaItems()" class="px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-            </svg>
-            <span id="cons-delete-btn-label">Eliminar Seleccionados</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-gray-500 uppercase">Registros Encontrados</p>
-            <p id="cons-kpi-count" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase">Códigos Controlados</p>
+              <p id="perf-kpi-codes" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Ítems</span>
           </div>
-          <span class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">Despachos</span>
-        </div>
 
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-gray-500 uppercase">Cantidad Total Acumulada</p>
-            <p id="cons-kpi-qty" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase">Total Salidas (Consulta)</p>
+              <p id="perf-kpi-salidas" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-indYellow/25 text-amber-900 text-xs font-semibold">Despachos</span>
           </div>
-          <span class="px-2.5 py-1 rounded-lg bg-indLime/20 text-green-800 text-xs font-semibold">Volumen</span>
-        </div>
 
-        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-semibold text-gray-500 uppercase">RQs Distintos</p>
-            <p id="cons-kpi-rqs" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase">Stock Actual Total</p>
+              <p id="perf-kpi-actual" class="text-2xl font-bold text-gray-800 mt-0.5">0</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg bg-indLime/20 text-green-800 text-xs font-semibold">Disponible</span>
           </div>
-          <span class="px-2.5 py-1 rounded-lg bg-indYellow/25 text-amber-900 text-xs font-semibold">Requerimientos</span>
         </div>
-      </div>
 
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
-                <th class="py-3 px-4 font-semibold text-center w-10">
-                  <input type="checkbox" id="cons-select-all" onchange="toggleSelectAllConsultaItems(this.checked)" title="Seleccionar todos los visibles" aria-label="Seleccionar todos los ítems visibles" class="w-4 h-4 rounded border-gray-300 text-slateOps focus:ring-slateOps cursor-pointer" />
-                </th>
-                <th class="py-3 px-4 font-semibold">Fecha</th>
-                <th class="py-3 px-4 font-semibold">Área</th>
-                <th class="py-3 px-4 font-semibold">RQ</th>
-                <th class="py-3 px-4 font-semibold">Destino</th>
-                <th class="py-3 px-4 font-semibold">Código</th>
-                <th class="py-3 px-4 font-semibold">Descripción</th>
-                <th class="py-3 px-4 font-semibold">Unidad de medida</th>
-                <th class="py-3 px-4 font-semibold text-right">Cantidad despachada</th>
-                <th class="py-3 px-4 font-semibold text-right">Cantidad en unidades</th>
-                <th class="py-3 px-4 font-semibold">Nota salida/otros</th>
-                <th class="py-3 px-4 font-semibold">Responsable</th>
-                <th class="py-3 px-4 font-semibold text-center">Estado de acta</th>
-              </tr>
-            </thead>
-            <tbody id="cons-table-body" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
-          </table>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-200">
+                  <th class="py-3 px-4 font-semibold">Código</th>
+                  <th class="py-3 px-4 font-semibold">Descripción</th>
+                  <th class="py-3 px-4 font-semibold">Unidad de medida</th>
+                  <th class="py-3 px-4 font-semibold text-right">Stock inicial</th>
+                  <th class="py-3 px-4 font-semibold text-right">Salidas</th>
+                  <th class="py-3 px-4 font-semibold text-right">Stock actual</th>
+                  <th class="py-3 px-4 font-semibold text-center">Acciones</th>
+                  <th class="py-3 px-4 font-semibold">Comentario</th>
+                </tr>
+              </thead>
+              <tbody id="perf-stock-tbody" class="divide-y divide-gray-100 text-sm text-gray-700"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -1057,7 +1180,8 @@
       MATERIALES: 'sgd_maestro_materiales_v1',
       AREAS: 'sgd_maestro_areas_v2',
       AREAS_LEGACY: 'sgd_maestro_areas_v1',
-      DESPACHOS: 'sgd_despachos_v1'
+      DESPACHOS: 'sgd_despachos_v1',
+      STOCK_PERFORACION: 'sgd_stock_perforacion_v1'
     };
 
     const DEFAULT_MATERIALES = [
@@ -1185,9 +1309,15 @@
       }
     ];
 
+    const DEFAULT_STOCK_PERFORACION = [
+      { codigo: 'MAT-001', stockInicial: 50, comentario: '' },
+      { codigo: 'MAT-002', stockInicial: 100, comentario: '' }
+    ];
+
     let maestroMateriales = [];
     let maestroAreas = [];
     let despachos = [];
+    let stockPerforacion = [];
     let multiItemsBuffer = [];
     let selectedConsultaIds = new Set();
     let selectedMaterialCodes = new Set();
@@ -1198,6 +1328,7 @@
     let chartPorArea = null;
     let chartEstado = null;
     let activeViewName = 'dashboard';
+    let activeConsultaTab = 'destino-rq';
 
     function normalizeResponsableValue(val, fallback = 'Alex Clavijo Fernandez') {
       const clean = String(val || '').trim();
@@ -1484,11 +1615,20 @@
           const fallbackEstado = d.estado === 'Completado' ? 'Regularizado' : 'Pendiente';
           d.estadoActa = normalizeEstadoActaValue(d.notaSalida, d.estadoActa || fallbackEstado);
         });
+
+        const storedPerf = localStorage.getItem(STORAGE_KEYS.STOCK_PERFORACION);
+        stockPerforacion = storedPerf ? JSON.parse(storedPerf) : JSON.parse(JSON.stringify(DEFAULT_STOCK_PERFORACION));
+        stockPerforacion = stockPerforacion.map(item => ({
+          codigo: String(item.codigo || '').trim().toUpperCase(),
+          stockInicial: Number(item.stockInicial) || 0,
+          comentario: String(item.comentario || '').trim()
+        })).filter(item => item.codigo);
       } catch (err) {
         console.error('Error cargando localStorage:', err);
         maestroMateriales = JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
         maestroAreas = JSON.parse(JSON.stringify(DEFAULT_AREAS));
         despachos = JSON.parse(JSON.stringify(DEFAULT_DESPACHOS));
+        stockPerforacion = JSON.parse(JSON.stringify(DEFAULT_STOCK_PERFORACION));
       }
       saveLocalOnly();
     }
@@ -1498,6 +1638,7 @@
         localStorage.setItem(STORAGE_KEYS.MATERIALES, JSON.stringify(maestroMateriales));
         localStorage.setItem(STORAGE_KEYS.AREAS, JSON.stringify(maestroAreas));
         localStorage.setItem(STORAGE_KEYS.DESPACHOS, JSON.stringify(despachos));
+        localStorage.setItem(STORAGE_KEYS.STOCK_PERFORACION, JSON.stringify(stockPerforacion));
       } catch (err) {
         console.error('Error guardando en localStorage:', err);
       }
@@ -1572,6 +1713,13 @@
       return `${y}-${m}-${d}`;
     }
 
+    function formatNumberPE(val) {
+      const num = Number(val) || 0;
+      return Number.isInteger(num)
+        ? num.toLocaleString('es-PE')
+        : num.toLocaleString('es-PE', { maximumFractionDigits: 2 });
+    }
+
     // =========================================================================
     // 4. NAVEGACIÓN ENTRE VISTAS Y MENÚ MÓVIL
     // =========================================================================
@@ -1602,7 +1750,7 @@
         initRegistroForm();
       } else if (viewName === 'consulta') {
         initConsultaFilters();
-        renderConsultaView();
+        switchConsultaTab(activeConsultaTab);
       } else if (viewName === 'maestros') {
         renderMaestrosTables();
       }
@@ -1678,9 +1826,7 @@
       const { regularizadas, pendientes } = getActasCounts(periodData);
 
       document.getElementById('kpi-total-despachos').textContent = totalDespachos.toLocaleString('es-PE');
-      document.getElementById('kpi-total-unidades').textContent = Number.isInteger(totalUnidades)
-        ? totalUnidades.toLocaleString('es-PE')
-        : totalUnidades.toLocaleString('es-PE', { maximumFractionDigits: 2 });
+      document.getElementById('kpi-total-unidades').textContent = formatNumberPE(totalUnidades);
       document.getElementById('kpi-destinos-atendidos').textContent = destinosUnicos.toLocaleString('es-PE');
       document.getElementById('kpi-actas-regularizadas').textContent = regularizadas.toLocaleString('es-PE');
       document.getElementById('kpi-actas-pendientes').textContent = pendientes.toLocaleString('es-PE');
@@ -2292,8 +2438,38 @@
     }
 
     // =========================================================================
-    // 7. CONSULTA AVANZADA, SELECCIÓN MÚLTIPLE, EDICIÓN Y ELIMINACIÓN
+    // 7. CONSULTAR (PESTAÑAS: DESTINO/RQ Y STOCK PERFORACIÓN)
     // =========================================================================
+    function switchConsultaTab(tabName) {
+      activeConsultaTab = tabName === 'stock-perforacion' ? 'stock-perforacion' : 'destino-rq';
+      const panelDestino = document.getElementById('consulta-panel-destino-rq');
+      const panelStock = document.getElementById('consulta-panel-stock-perforacion');
+      const btnDestino = document.getElementById('cons-tab-destino-rq');
+      const btnStock = document.getElementById('cons-tab-stock-perforacion');
+
+      if (activeConsultaTab === 'destino-rq') {
+        panelDestino?.classList.remove('hidden');
+        panelStock?.classList.add('hidden');
+        if (btnDestino) btnDestino.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slateOps text-white transition';
+        if (btnStock) btnStock.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 hover:bg-gray-100 transition';
+        renderConsultaView();
+      } else {
+        panelDestino?.classList.add('hidden');
+        panelStock?.classList.remove('hidden');
+        if (btnStock) btnStock.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-slateOps text-white transition';
+        if (btnDestino) btnDestino.className = 'px-4 py-2 rounded-xl text-sm font-semibold bg-white text-gray-600 hover:bg-gray-100 transition';
+        renderStockPerforacionView();
+      }
+    }
+
+    function handleExportConsultar() {
+      if (activeConsultaTab === 'stock-perforacion') {
+        exportStockPerforacionExcel();
+      } else {
+        exportFilteredCSV('consulta');
+      }
+    }
+
     function initConsultaFilters() {
       const areaSelect = document.getElementById('cons-filter-area');
       const currentArea = areaSelect.value;
@@ -2631,9 +2807,7 @@
       const uniqueRQs = new Set(rows.map(d => d.rq.trim().toLowerCase()).filter(Boolean)).size;
 
       document.getElementById('cons-kpi-count').textContent = rows.length.toLocaleString('es-PE');
-      document.getElementById('cons-kpi-qty').textContent = Number.isInteger(totalQty)
-        ? totalQty.toLocaleString('es-PE')
-        : totalQty.toLocaleString('es-PE', { maximumFractionDigits: 2 });
+      document.getElementById('cons-kpi-qty').textContent = formatNumberPE(totalQty);
       document.getElementById('cons-kpi-rqs').textContent = uniqueRQs.toLocaleString('es-PE');
 
       const selectAllCb = document.getElementById('cons-select-all');
@@ -2682,6 +2856,319 @@
           </tr>
         `;
       }).join('');
+    }
+
+    // =========================================================================
+    // 7B. CONSULTAR STOCK PERFORACIÓN
+    // =========================================================================
+    let activePerfSuggestions = [];
+    let activePerfSuggestionIndex = -1;
+
+    function getDespachoItemCantidadCondicional(item) {
+      const mat = maestroMateriales.find(m => m.codigo.toUpperCase() === String(item.codigo || '').trim().toUpperCase());
+      const desc = item.descripcion || mat?.descripcion || '';
+      if (isTubingOrCanosDescription(desc)) {
+        return item.cantidadUnidades != null && item.cantidadUnidades !== ''
+          ? (Number(item.cantidadUnidades) || 0)
+          : (Number(item.cantidad) || 0);
+      }
+      return Number(item.cantidad) || 0;
+    }
+
+    function calcularSalidasPorCodigo(codigo) {
+      const targetCode = String(codigo || '').trim().toUpperCase();
+      if (!targetCode) return 0;
+      return despachos
+        .filter(d => String(d.codigo || '').trim().toUpperCase() === targetCode)
+        .reduce((acc, item) => acc + getDespachoItemCantidadCondicional(item), 0);
+    }
+
+    function getStockPerforacionComputedRows() {
+      return stockPerforacion.map(entry => {
+        const codeUpper = String(entry.codigo || '').trim().toUpperCase();
+        const mat = maestroMateriales.find(m => m.codigo.toUpperCase() === codeUpper);
+        const sampleDespacho = despachos.find(d => String(d.codigo || '').trim().toUpperCase() === codeUpper);
+        const descripcion = mat?.descripcion || sampleDespacho?.descripcion || 'Sin descripción';
+        const unidad = mat?.unidad || sampleDespacho?.unidad || 'UND';
+        const salidas = calcularSalidasPorCodigo(codeUpper);
+        const stockInicial = Number(entry.stockInicial) || 0;
+        const stockActual = stockInicial - salidas;
+
+        return {
+          codigo: codeUpper,
+          descripcion,
+          unidad,
+          stockInicial,
+          salidas,
+          stockActual,
+          comentario: String(entry.comentario || '').trim()
+        };
+      });
+    }
+
+    function renderPerfCodigoDropdown() {
+      const dropdown = document.getElementById('perf-codigo-dropdown');
+      const input = document.getElementById('perf-codigo');
+      if (!dropdown || !input) return;
+
+      const q = input.value.trim();
+      if (!q) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        activePerfSuggestions = [];
+        activePerfSuggestionIndex = -1;
+        return;
+      }
+
+      activePerfSuggestions = getSimilarMaterials(q);
+      activePerfSuggestionIndex = activePerfSuggestions.length > 0 ? 0 : -1;
+
+      if (activePerfSuggestions.length === 0) {
+        dropdown.innerHTML = `
+          <div class="px-3.5 py-2.5 text-xs text-gray-500">
+            Sin códigos similares para "<span class="font-semibold text-gray-700">${q}</span>"
+          </div>
+        `;
+        dropdown.classList.remove('hidden');
+        return;
+      }
+
+      dropdown.innerHTML = activePerfSuggestions.map((mat, idx) => {
+        const isHighlighted = idx === activePerfSuggestionIndex;
+        const badgeTubing = isTubingOrCanosDescription(mat.descripcion)
+          ? '<span class="ml-1.5 px-1.5 py-0.5 rounded bg-indYellow/40 text-amber-950 text-[10px] font-bold">Tubing/Caños</span>'
+          : '';
+        return `
+          <button
+            type="button"
+            onmousedown="selectPerfSuggestedMaterial('${mat.codigo.replace(/'/g, "\\'")}')"
+            class="w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between gap-2 transition ${isHighlighted ? 'bg-indYellow/20' : 'hover:bg-gray-50'}"
+          >
+            <div class="min-w-0">
+              <div class="font-mono font-bold text-slateOps">${mat.codigo}${badgeTubing}</div>
+              <div class="text-gray-700 truncate">${mat.descripcion}</div>
+            </div>
+            <span class="shrink-0 font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">${mat.unidad}</span>
+          </button>
+        `;
+      }).join('');
+
+      dropdown.classList.remove('hidden');
+    }
+
+    function selectPerfSuggestedMaterial(codigo) {
+      const input = document.getElementById('perf-codigo');
+      const dropdown = document.getElementById('perf-codigo-dropdown');
+      if (input) input.value = codigo;
+      if (dropdown) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+      }
+      activePerfSuggestions = [];
+      activePerfSuggestionIndex = -1;
+      handlePerfCodigoInput(false);
+    }
+
+    function handlePerfCodigoInput(showDropdown = true) {
+      const input = document.getElementById('perf-codigo');
+      const typedCode = (input?.value || '').trim().toUpperCase();
+      const mat = maestroMateriales.find(m => m.codigo.toUpperCase() === typedCode);
+
+      if (mat) {
+        document.getElementById('perf-descripcion').value = mat.descripcion;
+        document.getElementById('perf-unidad').value = mat.unidad;
+      } else {
+        document.getElementById('perf-descripcion').value = '';
+        document.getElementById('perf-unidad').value = '';
+      }
+
+      if (showDropdown) {
+        renderPerfCodigoDropdown();
+      }
+    }
+
+    function handlePerfCodigoBlur() {
+      setTimeout(() => {
+        const dropdown = document.getElementById('perf-codigo-dropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+      }, 150);
+    }
+
+    function handlePerfCodigoKeydown(e) {
+      const dropdown = document.getElementById('perf-codigo-dropdown');
+      if (!dropdown || dropdown.classList.contains('hidden') || activePerfSuggestions.length === 0) {
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        activePerfSuggestionIndex = (activePerfSuggestionIndex + 1) % activePerfSuggestions.length;
+        renderPerfCodigoDropdown();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        activePerfSuggestionIndex = (activePerfSuggestionIndex - 1 + activePerfSuggestions.length) % activePerfSuggestions.length;
+        renderPerfCodigoDropdown();
+      } else if (e.key === 'Enter' && activePerfSuggestionIndex >= 0) {
+        e.preventDefault();
+        const chosen = activePerfSuggestions[activePerfSuggestionIndex];
+        if (chosen) selectPerfSuggestedMaterial(chosen.codigo);
+      } else if (e.key === 'Escape') {
+        dropdown.classList.add('hidden');
+      }
+    }
+
+    function handleAddStockPerforacion(e) {
+      e.preventDefault();
+      const codigo = document.getElementById('perf-codigo').value.trim().toUpperCase();
+      const stockInicial = parseFloat(document.getElementById('perf-stock-inicial').value);
+
+      if (!codigo) {
+        showToast('Ingresa un código de material.', 'warning');
+        return;
+      }
+      if (isNaN(stockInicial) || stockInicial < 0) {
+        showToast('Ingresa un stock inicial válido (0 o mayor).', 'warning');
+        return;
+      }
+
+      const existingIdx = stockPerforacion.findIndex(item => item.codigo.toUpperCase() === codigo);
+      if (existingIdx !== -1) {
+        stockPerforacion[existingIdx].stockInicial = stockInicial;
+        showToast(`Stock inicial actualizado para ${codigo}.`, 'success');
+      } else {
+        stockPerforacion.unshift({ codigo, stockInicial, comentario: '' });
+        showToast(`Código ${codigo} agregado a Stock Perforación.`, 'success');
+      }
+
+      saveLocalOnly();
+      document.getElementById('form-stock-perforacion').reset();
+      document.getElementById('perf-descripcion').value = '';
+      document.getElementById('perf-unidad').value = '';
+      renderStockPerforacionView();
+    }
+
+    function handleInlineStockInicialChange(codigo, newValue) {
+      const parsed = parseFloat(newValue);
+      if (isNaN(parsed) || parsed < 0) {
+        showToast('El stock inicial debe ser un número mayor o igual a 0.', 'warning');
+        renderStockPerforacionView();
+        return;
+      }
+      const idx = stockPerforacion.findIndex(item => item.codigo.toUpperCase() === String(codigo).toUpperCase());
+      if (idx === -1) return;
+      stockPerforacion[idx].stockInicial = parsed;
+      saveLocalOnly();
+      renderStockPerforacionView();
+      showToast(`Stock inicial de ${codigo} actualizado.`, 'success');
+    }
+
+    function handleInlineComentarioChange(codigo, newComentario) {
+      const idx = stockPerforacion.findIndex(item => item.codigo.toUpperCase() === String(codigo).toUpperCase());
+      if (idx === -1) return;
+      stockPerforacion[idx].comentario = String(newComentario || '').trim();
+      saveLocalOnly();
+    }
+
+    function confirmDeleteStockPerforacion(codigo) {
+      showConfirmModal(
+        'Quitar Código de Stock Perforación',
+        `¿Estás seguro de quitar el código ${codigo} de la tabla de Stock Perforación?`,
+        () => {
+          stockPerforacion = stockPerforacion.filter(item => item.codigo.toUpperCase() !== String(codigo).toUpperCase());
+          saveLocalOnly();
+          renderStockPerforacionView();
+          showToast(`Código ${codigo} eliminado de Stock Perforación.`, 'success');
+        }
+      );
+    }
+
+    function renderStockPerforacionView() {
+      const tbody = document.getElementById('perf-stock-tbody');
+      if (!tbody) return;
+
+      const rows = getStockPerforacionComputedRows();
+      const totalSalidas = rows.reduce((acc, r) => acc + r.salidas, 0);
+      const totalActual = rows.reduce((acc, r) => acc + r.stockActual, 0);
+
+      document.getElementById('perf-kpi-codes').textContent = rows.length.toLocaleString('es-PE');
+      document.getElementById('perf-kpi-salidas').textContent = formatNumberPE(totalSalidas);
+      document.getElementById('perf-kpi-actual').textContent = formatNumberPE(totalActual);
+
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-400 text-sm">Agrega un código arriba y digita su stock inicial para comenzar.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => {
+        const isNegative = r.stockActual < 0;
+        const isTubing = isTubingOrCanosDescription(r.descripcion);
+        const escapedCode = r.codigo.replace(/'/g, "\\'");
+        const escapedComment = r.comentario.replace(/"/g, '&quot;');
+        return `
+          <tr class="hover:bg-gray-50 transition">
+            <td class="py-3 px-4 whitespace-nowrap font-mono text-xs font-bold text-slateOps">
+              ${r.codigo}
+              ${isTubing ? '<span class="ml-1.5 px-1.5 py-0.5 rounded bg-indYellow/40 text-amber-950 text-[10px] font-bold">Tubing/Caños</span>' : ''}
+            </td>
+            <td class="py-3 px-4 text-gray-700">${r.descripcion}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-xs font-semibold text-gray-500">${r.unidad}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-right">
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value="${r.stockInicial}"
+                aria-label="Stock inicial para ${r.codigo}"
+                onchange="handleInlineStockInicialChange('${escapedCode}', this.value)"
+                class="w-24 rounded-lg border border-gray-300 bg-white px-2 py-1 text-right text-xs font-bold text-gray-800 focus:border-slateOps focus:outline-none"
+              />
+            </td>
+            <td class="py-3 px-4 whitespace-nowrap text-right font-bold text-amber-800">${formatNumberPE(r.salidas)}</td>
+            <td class="py-3 px-4 whitespace-nowrap text-right font-extrabold ${isNegative ? 'text-red-700 bg-red-50/70' : 'text-green-800 bg-[#EEF8DC]/60'}">
+              ${formatNumberPE(r.stockActual)}
+            </td>
+            <td class="py-3 px-4 whitespace-nowrap text-center">
+              <button type="button" onclick="confirmDeleteStockPerforacion('${escapedCode}')" class="px-2.5 py-1 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-xs font-semibold transition">
+                Eliminar
+              </button>
+            </td>
+            <td class="py-3 px-4">
+              <input
+                type="text"
+                value="${escapedComment}"
+                placeholder="Escribir comentario..."
+                aria-label="Comentario para ${r.codigo}"
+                onchange="handleInlineComentarioChange('${escapedCode}', this.value)"
+                class="w-44 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-700 focus:border-slateOps focus:outline-none"
+              />
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function exportStockPerforacionExcel() {
+      const rows = getStockPerforacionComputedRows();
+      if (rows.length === 0) {
+        showToast('No hay registros en Stock Perforación para exportar.', 'warning');
+        return;
+      }
+
+      const headers = [
+        'Código', 'Descripción', 'Unidad de medida',
+        'Stock inicial', 'Salidas', 'Stock actual', 'Comentario'
+      ];
+      const rowsData = rows.map(r => [
+        r.codigo,
+        r.descripcion,
+        r.unidad,
+        r.stockInicial,
+        r.salidas,
+        r.stockActual,
+        r.comentario
+      ]);
+
+      exportStyledXlsx(`Stock_Perforacion_${getTodayISO()}.xlsx`, headers, rowsData);
     }
 
     // =========================================================================
@@ -3356,6 +3843,7 @@
           maestroMateriales = JSON.parse(JSON.stringify(DEFAULT_MATERIALES));
           maestroAreas = JSON.parse(JSON.stringify(DEFAULT_AREAS));
           despachos = JSON.parse(JSON.stringify(DEFAULT_DESPACHOS));
+          stockPerforacion = JSON.parse(JSON.stringify(DEFAULT_STOCK_PERFORACION));
           multiItemsBuffer = [];
           selectedConsultaIds.clear();
           selectedMaterialCodes.clear();
