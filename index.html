@@ -2327,7 +2327,14 @@
         .sort((a, b) => b.fecha.localeCompare(a.fecha) || b.id - a.id);
     }
 
-    function handleInlineEstadoActaChange(id, newEstado) {
+    function getEstadoActaBadgeClasses(estadoActa) {
+      if (estadoActa === 'Regularizado') {
+        return 'bg-[#EEF8DC] text-[#15803D] border-[#C5E599]';
+      }
+      return 'bg-[#FDF2F2] text-[#B91C1C] border-[#F6CACA]';
+    }
+
+    function handleInlineEstadoActaChange(id, newEstado, selectEl = null) {
       const idx = despachos.findIndex(d => d.id === id);
       if (idx === -1) return;
       const item = despachos[idx];
@@ -2335,6 +2342,9 @@
         item.estadoActa = '-';
       } else {
         item.estadoActa = newEstado === 'Regularizado' ? 'Regularizado' : 'Pendiente';
+      }
+      if (selectEl && item.estadoActa !== '-') {
+        selectEl.className = `rounded-lg border px-2 py-1 text-xs font-semibold ${getEstadoActaBadgeClasses(item.estadoActa)} focus:border-slateOps focus:outline-none cursor-pointer transition-colors`;
       }
       saveAllToStorage();
       if (selectedConsultaIds.size === 1 && selectedConsultaIds.has(id)) {
@@ -2642,7 +2652,7 @@
         const estadoActa = normalizeEstadoActaValue(d.notaSalida, d.estadoActa);
 
         const estadoActaCell = esActa
-          ? `<select onchange="handleInlineEstadoActaChange(${d.id}, this.value)" aria-label="Estado de acta para ${d.codigo}" class="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-semibold ${estadoActa === 'Regularizado' ? 'text-green-800 border-green-300 bg-green-50/50' : 'text-amber-900 border-amber-300 bg-amber-50/50'} focus:border-slateOps focus:outline-none cursor-pointer">
+          ? `<select onchange="handleInlineEstadoActaChange(${d.id}, this.value, this)" aria-label="Estado de acta para ${d.codigo}" class="rounded-lg border px-2 py-1 text-xs font-semibold ${getEstadoActaBadgeClasses(estadoActa)} focus:border-slateOps focus:outline-none cursor-pointer transition-colors">
                <option value="Pendiente" ${estadoActa === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
                <option value="Regularizado" ${estadoActa === 'Regularizado' ? 'selected' : ''}>Regularizado</option>
              </select>`
